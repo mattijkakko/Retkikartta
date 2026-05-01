@@ -392,8 +392,10 @@ border-radius:var(–radius);padding:7px 6px;text-align:center;
   <!-- BOTTOM ACTION BAR -->
 
   <div class="action-bar">
-    <button class="act-btn primary" id="btnDraw"  onclick="toggleDrawing()">✏️ Piirrä</button>
-    <button class="act-btn"         id="btnRoute" onclick="toggleRouting()">🧭 Reititä</button>
+    <button class="act-btn primary" id="btnDraw"      onclick="toggleDrawing()">✏️ Piirrä</button>
+    <button class="act-btn"         id="btnRoute"     onclick="toggleRouting()">🧭 Reititä</button>
+    <button class="act-btn"         id="btnCloseLoop" onclick="closeLoop()"    style="display:none">🔄 Ympyrä</button>
+    <button class="act-btn"         id="btnConfirm"   onclick="confirmRoute()" style="display:none">✅ Valmis</button>
     <button class="act-btn" onclick="document.getElementById('gpxInput').click()">📂 GPX</button>
     <button class="act-btn" onclick="exportGPX('track')" id="btnExportTrack" style="display:none">⬇️ Tallenne</button>
     <button class="act-btn" onclick="exportGPX('route')" id="btnExportRoute" style="display:none">⬇️ Reitti</button>
@@ -561,91 +563,139 @@ function updateRoute() {
 
 // ── ROUTING ───────────────────────────────────────────────
 const GH_KEY = 'e379a544-f2a3-4ad2-93c0-a2b43ce9047a';
-let routing = false;
-let routeClickPts = [];      // [start, end] tapped by user
-let routeMarkers  = [];      // temp markers during routing
-let plannedRoute  = [];      // final routed latlngs (full path)
-let planLine      = null;    // ghost dashed line on map
-let planGhostLine = null;    // shown during live tracking
+let routing       = false;
+let routeClickPts = [];   // latlngs tapped by user
+let routeMarkers  = [];   // markers shown during routing
+let plannedRoute  = [];   // final routed latlngs
+let planLine      = null;
+let planGhostLine = null;
 
 function toggleRouting() {
   routing = !routing;
-  drawing = false; // can't do both
+  drawing = false;
   document.getElementById('drawIndicator').classList.remove('visible');
   document.getElementById('btnDraw').classList.remove('primary');
-  document.getElementById('routeIndicator').classList.toggle('visible', routing);
   document.getElementById('btnRoute').classList.toggle('primary', routing);
   map.getContainer().style.cursor = routing ? 'crosshair' : '';
-  routeClickPts = [];
-  routeMarkers.forEach(m => m.remove()); routeMarkers = [];
-  if (!routing) showToast('Reititys pois');
+
+  if (!routing) {
+    // Cancel — remove temp markers
+    routeClickPts = [];
+    routeMarkers.forEach(m => m.remove()); routeMarkers = [];
+    document.getElementById('routeIndicator').classList.remove('visible');
+    document.getElementById('btnCloseLoop').style.display = 'none';
+    document.getElementById('btnConfirm').style.display   = 'none';
+    showToast('Reititys peruutettu');
+  } else {
+    routeClickPts = [];
+    routeMarkers.forEach(m => m.remove()); routeMarkers = [];
+    document.getElementById('routeIndicator').classList.add('visible');
+    document.getElementById('routeIndicator').textContent = '🧭 Napauta lähtöpiste kartalle';
+    document.getElementById('btnCloseLoop').style.display = 'none';
+  }
 }
 
+// Add a routing waypoint on map click
 map.on('click', async e => {
   if (drawing) { addWaypoint(e.latlng); return; }
   if (!routing) return;
+  addRoutePoint(e.latlng);
+});
 
-  routeClickPts.push(e.latlng);
+function addRoutePoint(latlng) {
+  routeClickPts.push(latlng);
+  const n = routeClickPts.length;
+  const isFirst = n === 1;
+  const icon = L.divIcon({
+    className: '',
+    html: `<div class="wp wp-${isFirst ? 'start' : 'mid'}" style="${isFirst?'':'background:#b07d2a'}"></div>`,
+    iconSize:[isFirst?18:14, isFirst?18:14],
+    iconAnchor:[isFirst?9:7, isFirst?9:7]
+  });
+  routeMarkers.push(L.marker(latlng, { icon }).addTo(map));
 
-  // Show tap marker
-  const isFirst = routeClickPts.length === 1;
-  const icon = L.divIcon({ className:'', html:`<div class="wp wp-${isFirst?'start':'end'}"></div>`, iconSize:[18,18], iconAnchor:[9,9] });
-  routeMarkers.push(L.marker(e.latlng, { icon }).addTo(map));
-
-  if (routeClickPts.length === 1) {
-    showToast('🧭 Napauta nyt määränpää');
-    return;
+  if (n === 1) {
+    document.getElementById('routeIndicator').textContent = '🧭 Napauta seuraava piste tai määränpää';
+    document.getElementById('btnConfirm').style.display = 'none';
+  } else {
+    document.getElementById('routeIndicator').textContent = `🧭 ${n} pistettä — napauta lisää, Valmis tai Ympyrä`;
+    document.getElementById('btnCloseLoop').style.display = '';
+    document.getElementById('btnConfirm').style.display = '';
   }
+}
 
-  // We have both points — fetch route
+async function fetchRoutedPath(pts) {
+  // Build query string with all points
+  const pointParams = pts.map(p => `point=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join('&');
+  const url = `https://graphhopper.com/api/1/route?${pointParams}&profile=hike&locale=fi&points_encoded=false&elevation=true&key=${GH_KEY}`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+  const j = await r.json();
+  if (!r.ok) {
+    const msg = j?.message || j?.hints?.[0]?.message || ('HTTP ' + r.status);
+    throw new Error(msg);
+  }
+  if (!j.paths?.length) throw new Error('Ei reittivaihtoehtoja');
+  return j.paths[0];
+}
+
+async function buildRoute(pts) {
+  if (pts.length < 2) { showToast('⚠️ Lisää vähintään 2 pistettä'); return; }
   document.getElementById('routingSpinner').classList.add('visible');
-  const [from, to] = routeClickPts;
   try {
-    const url = `https://graphhopper.com/api/1/route?point=${from.lat},${from.lng}&point=${to.lat},${to.lng}&profile=hike&locale=fi&points_encoded=false&key=${GH_KEY}`;
-    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    const j = await r.json();
-    if (!j.paths?.length) throw new Error('No path');
-
-    const coords = j.paths[0].points.coordinates; // [lng, lat, ele?]
+    const path   = await fetchRoutedPath(pts);
+    const coords = path.points.coordinates;
     plannedRoute = coords.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll; });
 
-    // Draw planned route — replace existing route
-    clearPlannedRoute();
-    waypoints = plannedRoute;
-    planLine = L.polyline(plannedRoute, { color:'#b07d2a', weight:4, opacity:0.9, lineJoin:'round', lineCap:'round' }).addTo(map);
+    clearPlannedRoute(false); // keep routeClickPts/markers during build
+    planLine  = L.polyline(plannedRoute, { color:'#b07d2a', weight:4, opacity:0.9, lineJoin:'round', lineCap:'round' }).addTo(map);
     routeLine = planLine;
+    waypoints = plannedRoute;
     map.fitBounds(planLine.getBounds(), { padding:[30,30] });
 
-    // Elevation from GraphHopper response
-    const ascend  = Math.round(j.paths[0].ascend  ?? 0);
-    const descend = Math.round(j.paths[0].descend ?? 0);
+    const ascend  = Math.round(path.ascend  ?? 0);
+    const descend = Math.round(path.descend ?? 0);
     document.getElementById('statUp').textContent   = '+'+ascend+'m';
     document.getElementById('statDown').textContent = '-'+descend+'m';
     routeElevations = plannedRoute.map(p => p.ele);
-
     updateStats();
     document.getElementById('btnExportRoute').style.display = '';
-    showToast(`🧭 Reitti löydetty — ${(j.paths[0].distance/1000).toFixed(2)} km`);
+    showToast(`🧭 Reitti löydetty — ${(path.distance/1000).toFixed(2)} km`);
   } catch(err) {
-    showToast('⚠️ Reittiä ei löydy — kokeile eri pisteitä');
+    showToast('⚠️ Virhe: ' + err.message);
+    console.error('GraphHopper error:', err);
   } finally {
     document.getElementById('routingSpinner').classList.remove('visible');
-    // Reset for next routing
+    // End routing mode
     routeClickPts = [];
     routeMarkers.forEach(m => m.remove()); routeMarkers = [];
     routing = false;
     document.getElementById('routeIndicator').classList.remove('visible');
     document.getElementById('btnRoute').classList.remove('primary');
+    document.getElementById('btnCloseLoop').style.display = 'none';
+    document.getElementById('btnConfirm').style.display   = 'none';
     map.getContainer().style.cursor = '';
   }
-});
+}
 
-function clearPlannedRoute() {
-  if (planLine) { map.removeLayer(planLine); planLine = null; }
+// "Reititä" — route through all tapped points A→B→C…
+async function confirmRoute() {
+  if (routeClickPts.length < 2) { showToast('⚠️ Lisää vähintään 2 pistettä'); return; }
+  await buildRoute([...routeClickPts]);
+}
+
+// "Sulje ympyrä" — add start as last point so route loops back
+async function closeLoop() {
+  if (routeClickPts.length < 2) { showToast('⚠️ Lisää ensin pisteitä'); return; }
+  await buildRoute([...routeClickPts, routeClickPts[0]]);
+}
+
+function clearPlannedRoute(full = true) {
+  if (planLine)      { map.removeLayer(planLine);      planLine = null; }
   if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
-  waypoints = []; markers.forEach(m => m.remove()); markers = [];
-  routeElevations = []; plannedRoute = [];
+  if (full) {
+    waypoints = []; markers.forEach(m => m.remove()); markers = [];
+    routeElevations = []; plannedRoute = [];
+  }
 }
 
 // Show planned route as ghost during live tracking
