@@ -613,7 +613,7 @@ map.on('click', e => {
 });
 
 function addWaypoint(latlng) {
-  // Add as a single drawn segment extending previous
+  pushHistory('segment', null);
   if (!segments.length || segments[segments.length-1].type !== 'drawn') {
     segments.push({ type: 'drawn', points: [latlng] });
   } else {
@@ -712,6 +712,7 @@ mapEl.addEventListener('touchend', e => {
 
   const simplified = rdp(freehandPts, 0.0003);
   if (simplified.length < 2) { cleanupFreehand(); return; }
+  pushHistory('freehand', JSON.parse(JSON.stringify(segments.map(s => ({type:s.type, points:s.points.map(p=>({lat:p.lat,lng:p.lng}))})))));
   spliceDrawnSegment(simplified);
   cleanupFreehand();
 }, { passive: false });
@@ -744,6 +745,7 @@ mapEl.addEventListener('mouseup', e => {
   let totalDist = 0;
   for (let i=1; i<freehandPts.length; i++) totalDist += haversine(freehandPts[i-1], freehandPts[i]);
   if (totalDist < 0.03) { cleanupFreehand(); return; }
+  pushHistory('freehand', JSON.parse(JSON.stringify(segments.map(s => ({type:s.type, points:s.points.map(p=>({lat:p.lat,lng:p.lng}))})))));
   spliceDrawnSegment(rdp(freehandPts, 0.0003));
   cleanupFreehand();
 });
@@ -771,31 +773,78 @@ function perpendicularDist(p, a, b) {
   return haversine(p, proj);
 }
 
+// ── ACTION HISTORY (for undo) ──────────────────────────────
+let actionHistory = []; // stack of {type, data} for undo
+
+function pushHistory(type, data) {
+  actionHistory.push({ type, data });
+}
+
+function undoLast() {
+  if (!actionHistory.length) { showToast('Ei kumottavaa'); return; }
+  const action = actionHistory.pop();
+
+  if (action.type === 'segment') {
+    // Remove last added segment
+    if (segments.length) {
+      segments.pop();
+      rebuildFromSegments();
+      showToast('↩️ Segmentti poistettu');
+    }
+  } else if (action.type === 'route') {
+    // Restore previous segments state
+    segments = action.data;
+    rebuildFromSegments();
+    showToast('↩️ Reitti kumottu');
+  } else if (action.type === 'freehand') {
+    segments = action.data;
+    rebuildFromSegments();
+    showToast('↩️ Piirros kumottu');
+  }
+}
+
 function clearRoute() {
   clearTimeout(eleTimer);
+  actionHistory = [];
 
-  // Segment lines
-  segmentLines.forEach(l => map.removeLayer(l));
+  // Remove all segment lines from map
+  segmentLines.forEach(l => { try { map.removeLayer(l); } catch(e){} });
   segmentLines = [];
   segments     = [];
 
-  // Named lines
-  if (routeLine)     { map.removeLayer(routeLine);     routeLine     = null; }
-  if (planLine)      { map.removeLayer(planLine);      planLine      = null; }
-  if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
-  if (gapFillLine)   { map.removeLayer(gapFillLine);   gapFillLine   = null; }
-  if (trackLine)     { map.removeLayer(trackLine);     trackLine     = null; }
+  // Remove all named route lines
+  [routeLine, planLine, planGhostLine, gapFillLine].forEach(l => {
+    if (l) try { map.removeLayer(l); } catch(e){}
+  });
+  routeLine = null; planLine = null; planGhostLine = null; gapFillLine = null;
 
-  // Markers
-  markers.forEach(m => m.remove());       markers       = [];
-  routeMarkers.forEach(m => m.remove());  routeMarkers  = [];
+  // Remove GPS dot and accuracy circle
+  if (gpsMarker)  { try { map.removeLayer(gpsMarker);  } catch(e){} gpsMarker  = null; }
+  if (gpsCircle)  { try { map.removeLayer(gpsCircle);  } catch(e){} gpsCircle  = null; }
 
-  // Data
-  waypoints = []; routeElevations = []; plannedRoute = []; trackPts = [];
+  // Remove GPS track line
+  if (trackLine)  { try { map.removeLayer(trackLine);  } catch(e){} trackLine  = null; }
+
+  // Remove freehand preview line
+  if (freehandLine) { try { map.removeLayer(freehandLine); } catch(e){} freehandLine = null; }
+
+  // Remove all markers
+  markers.forEach(m => { try { map.removeLayer(m); } catch(e){} });
+  markers = [];
+  routeMarkers.forEach(m => { try { map.removeLayer(m); } catch(e){} });
+  routeMarkers = [];
+
+  // Reset all data
+  waypoints    = [];
+  routeElevations = [];
+  plannedRoute = [];
+  trackPts     = [];
+  freehandPts  = [];
+  freehandActive = false;
+
   clearTrackStorage();
-  cleanupFreehand();
 
-  // UI
+  // Reset UI
   document.getElementById('btnExportTrack').style.display = 'none';
   document.getElementById('btnExportRoute').style.display = 'none';
   document.getElementById('statUp').textContent   = '– m';
@@ -899,7 +948,8 @@ async function buildRoute(pts) {
     const coords = path.points.coordinates;
     plannedRoute = coords.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll; });
 
-    // Store as routed segment
+    // Store as routed segment — save previous state for undo
+    pushHistory('route', JSON.parse(JSON.stringify(segments.map(s => ({type:s.type, points:s.points.map(p=>({lat:p.lat,lng:p.lng}))})))));
     segments = [{ type: 'routed', points: plannedRoute }];
     rebuildFromSegments();
     map.fitBounds(segmentLines[0]?.getBounds() ?? map.getBounds(), { padding:[30,30] });
