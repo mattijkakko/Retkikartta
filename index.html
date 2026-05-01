@@ -626,13 +626,22 @@ function addRoutePoint(latlng) {
 }
 
 async function fetchRoutedPath(pts) {
-  // Build query string with all points
-  const pointParams = pts.map(p => `point=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join('&');
-  const url = `https://graphhopper.com/api/1/route?${pointParams}&profile=walking&locale=fi&points_encoded=false&elevation=true&key=${GH_KEY}`;
-  const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+  const url  = `https://graphhopper.com/api/1/route?key=${GH_KEY}`;
+  const body = {
+    profile: 'foot',
+    points: pts.map(p => [parseFloat(p.lng.toFixed(6)), parseFloat(p.lat.toFixed(6))]),
+    points_encoded: false
+  };
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(12000)
+  });
   const j = await r.json();
   if (!r.ok) {
-    const msg = j?.message || j?.hints?.[0]?.message || ('HTTP ' + r.status);
+    // Show full error message
+    const msg = j?.message || (j?.hints && j.hints[0]?.message) || ('HTTP ' + r.status);
     throw new Error(msg);
   }
   if (!j.paths?.length) throw new Error('Ei reittivaihtoehtoja');
