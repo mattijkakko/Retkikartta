@@ -60,12 +60,16 @@ header{background:var(–surface);padding:12px 16px 10px;display:flex;align-item
 .layer-menu-btn.active .dot{background:var(–green)}
 
 /* ACTION BAR */
-.action-bar{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:6px;z-index:500;flex-wrap:nowrap;overflow-x:auto}
-.act-btn{flex:1;min-width:60px;padding:9px 4px;border:1.5px solid var(–border);border-radius:var(–radius);background:rgba(255,255,255,.94);color:var(–text);font-family:inherit;font-size:.72rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.1);transition:background .12s;white-space:nowrap}
-.act-btn:active{background:var(–bg)}
-.act-btn.primary{background:var(–green);border-color:var(–green);color:#fff}
+.action-bar{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:6px;z-index:500;overflow-x:auto;padding-bottom:2px}
+.action-bar::-webkit-scrollbar{display:none}
+.act-btn{flex:0 0 auto;padding:9px 12px;border:1.5px solid var(–border);border-radius:var(–radius);background:rgba(255,255,255,.94);color:var(–text2);font-family:inherit;font-size:.76rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.1);transition:all .15s;white-space:nowrap}
+.act-btn:active{opacity:.8}
+/* Active/primary states — clearly highlighted */
+.act-btn.primary{background:var(–green);border-color:var(–green);color:#fff;box-shadow:0 2px 10px rgba(52,122,63,.4)}
 .act-btn.primary:active{background:#2a6432}
-.act-btn.active-blue{background:var(–blue);border-color:var(–blue);color:#fff}
+.act-btn.active-blue{background:var(–blue);border-color:var(–blue);color:#fff;box-shadow:0 2px 10px rgba(52,120,246,.4)}
+.act-btn.active-blue:active{background:#1a5fd4}
+.act-btn.active-route{background:#c8a84b;border-color:#c8a84b;color:#fff;box-shadow:0 2px 10px rgba(200,168,75,.4)}
 
 /* OVERLAYS */
 .indicator{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);border:1px solid var(–border);border-radius:20px;padding:6px 14px;font-size:.72rem;font-weight:500;z-index:500;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.1);display:none}
@@ -260,6 +264,7 @@ function setLayer(name) {
   BASE_LAYERS.forEach(l => document.getElementById('lbtn-'+l).classList.toggle('active', l===name));
   layerMenuOpen = false;
   document.getElementById('layerMenu').classList.remove('open');
+  if (waypoints.length > 1) redraw(); // update route color for new layer
   showToast({osm:'🗺️ OpenStreetMap',mml:'🇫🇮 MML Maastokartta',topo:'🏔️ Topokartta',satellite:'🛸 Satelliitti',ortho:'📷 MML Ortoilmakuva'}[name]);
 }
 
@@ -285,26 +290,32 @@ function undoLast() {
   showToast('↩️ Kumottu');
 }
 
+// Route color based on active map layer for maximum contrast
+function routeColor() {
+  if (activeBase==='satellite'||activeBase==='ortho') return '#ffeb3b'; // yellow on dark imagery
+  if (activeBase==='topo'||activeBase==='mml') return '#e53935';       // red on topo/MML
+  return '#b07d2a';                                                      // gold on OSM (default)
+}
+
 // Remove all route polylines from map and rebuild from waypoints+wpTypes
 function redraw() {
   segLines.forEach(l => map.removeLayer(l));
   segLines = [];
   if (waypoints.length < 2) { updateStats(); return; }
 
-  // Group consecutive same-type points into segments
+  const color = routeColor(); // same color for all segments, dash distinguishes type
+
   let i = 0;
   while (i < waypoints.length - 1) {
     const type = wpTypes[i] || 'drawn';
     let j = i + 1;
     while (j < waypoints.length && (wpTypes[j]||'drawn') === type) j++;
-    // Slice with one overlap so segments connect visually
     const pts = waypoints.slice(i, j < waypoints.length ? j + 1 : j);
     if (pts.length > 1) {
       segLines.push(L.polyline(pts, {
-        color:     type === 'routed' ? '#b07d2a' : '#3478f6',
-        weight: 4, opacity: .9,
+        color, weight: 4, opacity: .9,
         lineJoin: 'round', lineCap: 'round',
-        dashArray: type === 'routed' ? null : '7,5'
+        dashArray: type === 'routed' ? null : '10,6'
       }).addTo(map));
     }
     i = j;
@@ -326,7 +337,7 @@ function clearAll() {
   // Stop any active modes
   if (drawing)  { drawing=false;  document.getElementById('drawInd').classList.remove('visible');  document.getElementById('btnDraw').classList.remove('primary'); }
   if (freehand) { freehand=false; document.getElementById('freeInd').classList.remove('visible');  document.getElementById('btnFreehand').classList.remove('active-blue'); map.dragging.enable(); }
-  if (routing)  { routing=false;  document.getElementById('routeInd').classList.remove('visible'); document.getElementById('btnRoute').classList.remove('primary'); routeMarkers.forEach(m=>removeLayer(m)); routeMarkers=[]; routeClickPts=[]; }
+  if (routing)  { routing=false;  document.getElementById('routeInd').classList.remove('visible'); document.getElementById('btnRoute').classList.remove('active-route'); routeMarkers.forEach(m=>removeLayer(m)); routeMarkers=[]; routeClickPts=[]; }
   map.getContainer().style.cursor = '';
 
   // Clear route lines
@@ -475,11 +486,13 @@ function fhMove(x, y) {
   if (!freehandLine) {
     freehandLine = L.polyline(freehandPts,{color:'#3478f6',weight:4,opacity:.85,dashArray:'7,5',lineJoin:'round',lineCap:'round'}).addTo(map);
   } else freehandLine.setLatLngs(freehandPts);
-  // Auto-pan near edges
-  const edge=40;
-  let dx=0,dy=0;
-  if (rx<edge) dx=-(edge-rx); else if (rx>rect.width-edge) dx=(edge-(rect.width-rx));
-  if (ry<edge) dy=-(edge-ry); else if (ry>rect.height-edge) dy=(edge-(rect.height-ry));
+  // Auto-pan when finger near edge — gentler (60px zone, slower pan)
+  const edge=60, panSpeed=8;
+  let dx=0, dy=0;
+  if (rx<edge) dx=-Math.round((edge-rx)/edge*panSpeed);
+  else if (rx>rect.width-edge) dx=Math.round((edge-(rect.width-rx))/edge*panSpeed);
+  if (ry<edge) dy=-Math.round((edge-ry)/edge*panSpeed);
+  else if (ry>rect.height-edge) dy=Math.round((edge-(rect.height-ry))/edge*panSpeed);
   if (dx||dy) map.panBy([dx,dy],{animate:false});
 }
 function fhEnd() {
@@ -530,14 +543,14 @@ function toggleRouting() {
   routeClickPts=[]; routeMarkers.forEach(m=>removeLayer(m)); routeMarkers=[];
   document.getElementById('routeInd').textContent='🧭 Napauta lähtöpiste kartalle';
   document.getElementById('routeInd').classList.add('visible');
-  document.getElementById('btnRoute').classList.add('primary');
+  document.getElementById('btnRoute').classList.add('active-route');
   map.getContainer().style.cursor='crosshair';
 }
 function cancelRouting() {
   routing=false;
   routeClickPts=[]; routeMarkers.forEach(m=>removeLayer(m)); routeMarkers=[];
   document.getElementById('routeInd').classList.remove('visible');
-  document.getElementById('btnRoute').classList.remove('primary');
+  document.getElementById('btnRoute').classList.remove('active-route');
   document.getElementById('btnCloseLoop').style.display='none';
   document.getElementById('btnConfirm').style.display='none';
   map.getContainer().style.cursor='';
