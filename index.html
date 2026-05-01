@@ -229,7 +229,8 @@ width:34px;height:3px;background:var(–border);
 border-radius:2px;margin:0 auto 10px;
 }
 
-.stats-row { display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px; }
+.stats-row { display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:6px; }
+.stats-row-2 { display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px; }
 .stat-card {
 background:var(–bg);border:1px solid var(–border);
 border-radius:var(–radius);padding:8px 6px;text-align:center;
@@ -308,8 +309,11 @@ display:flex;align-items:center;justify-content:center;gap:4px;
   <div class="stats-row">
     <div class="stat-card"><div class="stat-value" id="statDist">0 km</div><div class="stat-label">Pituus</div></div>
     <div class="stat-card"><div class="stat-value" id="statTime">0 min</div><div class="stat-label">Arvioitu aika</div></div>
-    <div class="stat-card"><div class="stat-value" id="statEle">– m</div><div class="stat-label">Korkeus</div></div>
-    <div class="stat-card"><div class="stat-value" id="statPoints">0</div><div class="stat-label">Pistettä</div></div>
+  </div>
+  <div class="stats-row-2">
+    <div class="stat-card"><div class="stat-value" id="statUp">– m</div><div class="stat-label">⬆ Nousu</div></div>
+    <div class="stat-card"><div class="stat-value" id="statDown">– m</div><div class="stat-label">⬇ Lasku</div></div>
+    <div class="stat-card"><div class="stat-value" id="statEle">– m</div><div class="stat-label">Korkeus nyt</div></div>
   </div>
   <div class="layer-row">
     <button class="layer-btn active" id="lbtn-osm"       onclick="changeLayer('osm')">🗺️<span>Kartta</span></button>
@@ -404,7 +408,11 @@ function undoLast() {
 
 function clearRoute() {
   waypoints=[]; markers.forEach(m=>m.remove()); markers=[];
+  routeElevations = [];
   if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  document.getElementById('statUp').textContent   = '– m';
+  document.getElementById('statDown').textContent = '– m';
+  document.getElementById('statEle').textContent  = '– m';
   updateStats(); showToast('Reitti tyhjennetty');
 }
 
@@ -429,21 +437,99 @@ function haversine(a,b) {
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
+// Tobler's hiking function: speed km/h based on slope (rise/run)
+function toblerSpeed(slopeRatio, baseSpeed) {
+  // W = 6 * e^(-3.5 * |slope + 0.05|) — adjusted to user base speed
+  const ref = 6 * Math.exp(-3.5 * Math.abs(0.05)); // flat speed in Tobler
+  const w   = 6 * Math.exp(-3.5 * Math.abs(slopeRatio + 0.05));
+  return baseSpeed * (w / ref);
+}
+
+// Compute time using Tobler when elevation profile is known
+function computeToblerTime(pts, elevations, baseSpeed) {
+  let totalHours = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const distKm = haversine(pts[i-1], pts[i]);
+    const distM  = distKm * 1000;
+    const dEle   = (elevations[i] ?? elevations[i-1] ?? 0) - (elevations[i-1] ?? 0);
+    const slope  = distM > 0 ? dEle / distM : 0;
+    const spd    = toblerSpeed(slope, baseSpeed);
+    totalHours  += distKm / Math.max(spd, 0.5);
+  }
+  return totalHours * 60; // minutes
+}
+
+function formatMins(mins) {
+  return mins >= 60 ? `${Math.floor(mins/60)}h ${Math.round(mins%60)}min` : Math.round(mins)+'min';
+}
+
+// Route elevation profile state
+let routeElevations = []; // parallel array to waypoints
 let eleTimer = null;
+
 function updateStats() {
-  let dist=0;
-  for(let i=1;i<waypoints.length;i++) dist+=haversine(waypoints[i-1],waypoints[i]);
-  const mins = Math.round((dist/(withDog?SPEED.dog:SPEED.normal))*60);
-  document.getElementById('statDist').textContent   = dist<1?(dist*1000).toFixed(0)+' m':dist.toFixed(2)+' km';
-  document.getElementById('statTime').textContent   = mins>=60?`${Math.floor(mins/60)}h ${mins%60}min`:mins+' min';
-  document.getElementById('statPoints').textContent = waypoints.length;
+  let dist = 0;
+  for (let i=1; i<waypoints.length; i++) dist += haversine(waypoints[i-1], waypoints[i]);
+  document.getElementById('statDist').textContent = dist<1?(dist*1000).toFixed(0)+' m':dist.toFixed(2)+' km';
+
+  // If we have elevation profile matching waypoints, use Tobler
+  const baseSpeed = withDog ? SPEED.dog : SPEED.normal;
+  if (routeElevations.length === waypoints.length && waypoints.length > 1) {
+    const mins = computeToblerTime(waypoints, routeElevations, baseSpeed);
+    document.getElementById('statTime').textContent = formatMins(mins);
+    // Compute ascent / descent
+    let up=0, down=0;
+    for (let i=1; i<routeElevations.length; i++) {
+      const d = (routeElevations[i]??0) - (routeElevations[i-1]??0);
+      if (d>0) up+=d; else down+=Math.abs(d);
+    }
+    document.getElementById('statUp').textContent   = up>0   ? '+'+Math.round(up)+'m'   : '0 m';
+    document.getElementById('statDown').textContent = down>0 ? '-'+Math.round(down)+'m' : '0 m';
+  } else {
+    // Fallback: flat time estimate
+    const mins = Math.round((dist/baseSpeed)*60);
+    document.getElementById('statTime').textContent = formatMins(mins);
+    if (waypoints.length > 1) {
+      document.getElementById('statUp').textContent   = '…';
+      document.getElementById('statDown').textContent = '…';
+    } else {
+      document.getElementById('statUp').textContent   = '– m';
+      document.getElementById('statDown').textContent = '– m';
+    }
+  }
+
   // Show/hide export buttons
   document.getElementById('btnExportRoute').style.display = waypoints.length>1 ? '' : 'none';
   document.getElementById('btnExportTrack').style.display = trackPts.length>1  ? '' : 'none';
-  // Debounce elevation fetch for planned route
+
+  // Debounce full-route elevation fetch
   if (waypoints.length > 0) {
     clearTimeout(eleTimer);
-    eleTimer = setTimeout(() => fetchElevation(waypoints[waypoints.length-1]), 800);
+    eleTimer = setTimeout(fetchRouteElevation, 900);
+  }
+}
+
+// Fetch elevation for ALL waypoints in one API call
+async function fetchRouteElevation() {
+  if (waypoints.length === 0) return;
+  try {
+    // Sample up to 100 points evenly (API limit)
+    const pts    = waypoints;
+    const locs   = pts.map(p => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join('|');
+    const url    = `https://api.open-elevation.com/api/v1/lookup?locations=${locs}`;
+    const r      = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const j      = await r.json();
+    if (!j.results) return;
+    routeElevations = j.results.map(r => r.elevation);
+    // Store ele on waypoint objects too (for GPX export)
+    routeElevations.forEach((e,i) => { if(waypoints[i]) waypoints[i].ele = e; });
+    // Update current elevation display with last point
+    const lastEle = routeElevations[routeElevations.length-1];
+    if (lastEle !== undefined) document.getElementById('statEle').textContent = Math.round(lastEle)+' m';
+    // Recalculate time with Tobler now that we have elevations
+    updateStats();
+  } catch(e) {
+    // Silently fail — flat estimate remains shown
   }
 }
 
@@ -736,13 +822,28 @@ function importGPX(event) {
         trackPts = pts;
         trackLine = L.polyline(trackPts, {color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
         document.getElementById('btnExportTrack').style.display = '';
-        // Show elevation of first point with ele data
-        const firstWithEle = pts.find(p => p.ele !== null);
-        if (firstWithEle) document.getElementById('statEle').textContent = Math.round(firstWithEle.ele)+' m';
+        // Compute ascent/descent from GPX ele data
+        const eles = pts.map(p => p.ele).filter(e => e !== null);
+        if (eles.length > 1) {
+          let up=0, down=0;
+          for (let i=1;i<pts.length;i++) {
+            if (pts[i].ele==null||pts[i-1].ele==null) continue;
+            const d = pts[i].ele - pts[i-1].ele;
+            if (d>0) up+=d; else down+=Math.abs(d);
+          }
+          document.getElementById('statUp').textContent   = '+'+Math.round(up)+'m';
+          document.getElementById('statDown').textContent = '-'+Math.round(down)+'m';
+          document.getElementById('statEle').textContent  = Math.round(pts[0].ele)+' m';
+        }
       } else {
-        // Load as planned route with markers
+        // Load as planned route with markers — populate elevations from GPX ele if present
         clearRoute();
         pts.forEach(ll => addWaypoint(ll));
+        const gpxEles = pts.map(p => p.ele);
+        if (gpxEles.some(e => e !== null)) {
+          routeElevations = gpxEles;
+          updateStats(); // recalc with Tobler immediately
+        }
       }
 
       // Get name from GPX metadata or track/route name
