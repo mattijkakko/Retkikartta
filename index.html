@@ -757,21 +757,28 @@ function perpendicularDist(p, a, b) {
 
 function clearRoute() {
   clearTimeout(eleTimer);
-  segments = []; segmentLines.forEach(l => map.removeLayer(l)); segmentLines = [];
-  markers.forEach(m=>m.remove()); markers=[];
-  waypoints=[]; routeElevations=[];
-  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
-  if(planLine){map.removeLayer(planLine);planLine=null;}
-  clearGapFill(); hidePlanGhost();
-  trackPts=[];
-  if(trackLine){map.removeLayer(trackLine);trackLine=null;}
-  clearTrackStorage();
+  // Clear all segment lines
+  segmentLines.forEach(l => map.removeLayer(l)); segmentLines = [];
+  segments = []; waypoints = []; routeElevations = [];
+  // Clear markers
+  markers.forEach(m => m.remove()); markers = [];
+  routeMarkers.forEach(m => m.remove()); routeMarkers = [];
+  // Clear all named lines
+  [routeLine, planLine, planGhostLine, gapFillLine, trackLine].forEach(l => { if(l) map.removeLayer(l); });
+  routeLine = null; planLine = null; planGhostLine = null; gapFillLine = null;
+  plannedRoute = [];
+  // Clear GPS track
+  trackPts = []; clearTrackStorage();
+  if(trackLine){ map.removeLayer(trackLine); trackLine = null; }
+  // Clear freehand
   cleanupFreehand();
-  document.getElementById('btnExportTrack').style.display='none';
-  document.getElementById('btnExportRoute').style.display='none';
-  document.getElementById('statUp').textContent='– m';
-  document.getElementById('statDown').textContent='– m';
-  document.getElementById('statEle').textContent='– m';
+  document.getElementById('btnExportTrack').style.display = 'none';
+  document.getElementById('btnExportRoute').style.display = 'none';
+  document.getElementById('statUp').textContent    = '– m';
+  document.getElementById('statDown').textContent  = '– m';
+  document.getElementById('statEle').textContent   = '– m';
+  document.getElementById('statDist').textContent  = '0 km';
+  document.getElementById('statTime').textContent  = '0 min';
   updateStats();
   showToast('Kartta tyhjennetty');
 }
@@ -916,15 +923,15 @@ async function closeLoop() {
 }
 
 function clearPlannedRoute(full = true) {
-  // Clear segment lines
   segmentLines.forEach(l => map.removeLayer(l)); segmentLines = [];
   if (planLine)      { map.removeLayer(planLine);      planLine = null; }
   if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
   if (routeLine)     { map.removeLayer(routeLine);     routeLine = null; }
+  // Always reset segments and planned route
+  segments = []; plannedRoute = [];
   if (full) {
-    segments = [];
     waypoints = []; markers.forEach(m => m.remove()); markers = [];
-    routeElevations = []; plannedRoute = [];
+    routeElevations = [];
   }
 }
 
