@@ -229,7 +229,7 @@ width:34px;height:3px;background:var(–border);
 border-radius:2px;margin:0 auto 10px;
 }
 
-.stats-row { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px; }
+.stats-row { display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px; }
 .stat-card {
 background:var(–bg);border:1px solid var(–border);
 border-radius:var(–radius);padding:8px 6px;text-align:center;
@@ -308,6 +308,7 @@ display:flex;align-items:center;justify-content:center;gap:4px;
   <div class="stats-row">
     <div class="stat-card"><div class="stat-value" id="statDist">0 km</div><div class="stat-label">Pituus</div></div>
     <div class="stat-card"><div class="stat-value" id="statTime">0 min</div><div class="stat-label">Arvioitu aika</div></div>
+    <div class="stat-card"><div class="stat-value" id="statEle">– m</div><div class="stat-label">Korkeus</div></div>
     <div class="stat-card"><div class="stat-value" id="statPoints">0</div><div class="stat-label">Pistettä</div></div>
   </div>
   <div class="layer-row">
@@ -320,6 +321,8 @@ display:flex;align-items:center;justify-content:center;gap:4px;
   </div>
   <div class="actions">
     <button class="action-btn primary" onclick="toggleDrawing()">✏️ Piirrä reitti</button>
+    <button class="action-btn" onclick="exportGPX('track')" id="btnExportTrack" style="display:none">⬇️ GPX</button>
+    <button class="action-btn" onclick="exportGPX('route')" id="btnExportRoute" style="display:none">⬇️ Reitti</button>
   </div>
 </div>
 
@@ -417,12 +420,14 @@ function updateRoute() {
   updateStats();
 }
 
-// ── STATS ─────────────────────────────────────────────────
+// ── STATS & ELEVATION ─────────────────────────────────────
 function haversine(a,b) {
   const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lng-a.lng)*Math.PI/180;
   const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
+
+let eleTimer = null;
 function updateStats() {
   let dist=0;
   for(let i=1;i<waypoints.length;i++) dist+=haversine(waypoints[i-1],waypoints[i]);
@@ -430,6 +435,24 @@ function updateStats() {
   document.getElementById('statDist').textContent   = dist<1?(dist*1000).toFixed(0)+' m':dist.toFixed(2)+' km';
   document.getElementById('statTime').textContent   = mins>=60?`${Math.floor(mins/60)}h ${mins%60}min`:mins+' min';
   document.getElementById('statPoints').textContent = waypoints.length;
+  // Show/hide export buttons
+  document.getElementById('btnExportRoute').style.display = waypoints.length>1 ? '' : 'none';
+  document.getElementById('btnExportTrack').style.display = trackPts.length>1  ? '' : 'none';
+  // Debounce elevation fetch for planned route
+  if (waypoints.length > 0) {
+    clearTimeout(eleTimer);
+    eleTimer = setTimeout(() => fetchElevation(waypoints[waypoints.length-1]), 800);
+  }
+}
+
+async function fetchElevation(latlng) {
+  try {
+    const url = `https://api.open-elevation.com/api/v1/lookup?locations=${latlng.lat.toFixed(5)},${latlng.lng.toFixed(5)}`;
+    const r   = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const j   = await r.json();
+    const ele = j.results?.[0]?.elevation;
+    if (ele !== undefined) document.getElementById('statEle').textContent = Math.round(ele)+' m';
+  } catch(e) {}
 }
 
 // ── MODE ──────────────────────────────────────────────────
@@ -471,7 +494,7 @@ function saveTrackToStorage() {
   const data = {
     start: trackStart,
     saved: Date.now(),
-    points: trackPts.map(p => [parseFloat(p.lat.toFixed(6)), parseFloat(p.lng.toFixed(6))])
+    points: trackPts.map(p => [parseFloat(p.lat.toFixed(6)), parseFloat(p.lng.toFixed(6)), p.ele != null ? parseFloat(p.ele.toFixed(1)) : null])
   };
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
 }
@@ -481,13 +504,13 @@ function loadTrackFromStorage() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    // Only restore if saved within last 24h
     if (Date.now() - data.saved > 86400000) { localStorage.removeItem(STORAGE_KEY); return; }
     if (!data.points || data.points.length < 2) return;
-    trackPts   = data.points.map(p => L.latLng(p[0], p[1]));
+    trackPts = data.points.map(p => { const ll=L.latLng(p[0],p[1]); ll.ele=p[2]??null; return ll; });
     trackStart = data.start;
     trackLine  = L.polyline(trackPts, {color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
     map.fitBounds(trackLine.getBounds(), {padding:[30,30]});
+    document.getElementById('btnExportTrack').style.display = '';
     showToast('📂 Edellinen reitti palautettu');
   } catch(e) {}
 }
@@ -541,10 +564,22 @@ function stopTracking() {
 
 function onGps(pos) {
   const ll=L.latLng(pos.coords.latitude,pos.coords.longitude);
+  // Store elevation from GPS if available, otherwise fetch
+  const ele = pos.coords.altitude !== null ? pos.coords.altitude : null;
+  ll.ele = ele;
   placeGpsDot(ll,pos.coords.accuracy);
   trackPts.push(ll);
+  // Update live elevation display
+  if (ele !== null) {
+    document.getElementById('statEle').textContent = Math.round(ele)+' m';
+  } else {
+    // Fetch from API every 5th point if GPS has no altitude
+    if (trackPts.length % 5 === 1) fetchElevationForTrack(ll, trackPts.length-1);
+  }
   // Auto-save to localStorage every 10 points
   if (trackPts.length % 10 === 0) saveTrackToStorage();
+  // Update export button visibility
+  document.getElementById('btnExportTrack').style.display = trackPts.length>1 ? '' : 'none';
   if(trackPts.length>1){
     if(!trackLine) trackLine=L.polyline(trackPts,{color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
     else trackLine.setLatLngs(trackPts);
@@ -555,6 +590,66 @@ function onGps(pos) {
   document.getElementById('trkAcc').textContent  = pos.coords.accuracy<10?'✅ '+pos.coords.accuracy.toFixed(0)+'m':pos.coords.accuracy.toFixed(0)+' m';
   const spd=pos.coords.speed;
   if(spd!==null&&spd>=0) document.getElementById('trkSpeed').textContent=(spd*3.6).toFixed(1)+' km/h';
+}
+
+async function fetchElevationForTrack(ll, idx) {
+  try {
+    const url = `https://api.open-elevation.com/api/v1/lookup?locations=${ll.lat.toFixed(5)},${ll.lng.toFixed(5)}`;
+    const r   = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const j   = await r.json();
+    const ele = j.results?.[0]?.elevation;
+    if (ele !== undefined && trackPts[idx]) {
+      trackPts[idx].ele = ele;
+      document.getElementById('statEle').textContent = Math.round(ele)+' m';
+    }
+  } catch(e) {}
+}
+
+// ── GPX EXPORT ────────────────────────────────────────────
+function exportGPX(type) {
+  const pts  = type === 'track' ? trackPts : waypoints;
+  const name = type === 'track' ? 'Kuljettu reitti' : 'Suunniteltu reitti';
+  if (!pts.length) { showToast('Ei reittipisteitä'); return; }
+
+  const now  = new Date().toISOString();
+  const ts   = new Date().toISOString().slice(0,19).replace(/[-:T]/g,'-');
+
+  let inner = '';
+  if (type === 'track') {
+    // GPX track (trkseg) for recorded GPS path
+    const trkpts = pts.map(p => {
+      const ele = p.ele != null ? `\n      <ele>${p.ele.toFixed(1)}</ele>` : '';
+      return `    <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">${ele}\n    </trkpt>`;
+    }).join('\n');
+    inner = `  <trk>\n    <name>${name}</name>\n    <trkseg>\n${trkpts}\n    </trkseg>\n  </trk>`;
+  } else {
+    // GPX route (rte) for planned waypoint route
+    const rtepts = pts.map((p,i) => {
+      const ele = p.ele != null ? `\n      <ele>${p.ele.toFixed(1)}</ele>` : '';
+      return `    <rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">${ele}\n      <name>WP${i+1}</name>\n    </rtept>`;
+    }).join('\n');
+    inner = `  <rte>\n    <name>${name}</name>\n${rtepts}\n  </rte>`;
+  }
+
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Retkikartta" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${name}</name>
+    <time>${now}</time>
+  </metadata>
+${inner}
+</gpx>`;
+
+  const blob = new Blob([gpx], { type:'application/gpx+xml' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `retkikartta-${type}-${ts}.gpx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('⬇️ GPX-tiedosto ladattu!');
 }
 
 function placeGpsDot(ll,acc) {
