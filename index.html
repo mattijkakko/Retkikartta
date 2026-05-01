@@ -808,6 +808,7 @@ function formatMins(mins) {
 // Route elevation profile state
 let routeElevations = []; // parallel array to waypoints
 let eleTimer = null;
+let elevationReady = false; // true when elevation has been successfully fetched
 
 function updateStats() {
   let dist = 0;
@@ -819,7 +820,6 @@ function updateStats() {
   if (routeElevations.length === waypoints.length && waypoints.length > 1) {
     const mins = computeToblerTime(waypoints, routeElevations, baseSpeed);
     document.getElementById('statTime').textContent = formatMins(mins);
-    // Compute ascent / descent
     let up=0, down=0;
     for (let i=1; i<routeElevations.length; i++) {
       const d = (routeElevations[i]??0) - (routeElevations[i-1]??0);
@@ -828,7 +828,6 @@ function updateStats() {
     document.getElementById('statUp').textContent   = up>0   ? '+'+Math.round(up)+'m'   : '0 m';
     document.getElementById('statDown').textContent = down>0 ? '-'+Math.round(down)+'m' : '0 m';
   } else {
-    // Fallback: flat time estimate
     const mins = Math.round((dist/baseSpeed)*60);
     document.getElementById('statTime').textContent = formatMins(mins);
     if (waypoints.length > 1) {
@@ -844,8 +843,8 @@ function updateStats() {
   document.getElementById('btnExportRoute').style.display = waypoints.length>1 ? '' : 'none';
   document.getElementById('btnExportTrack').style.display = trackPts.length>1  ? '' : 'none';
 
-  // Debounce full-route elevation fetch
-  if (waypoints.length > 0) {
+  // Only fetch elevation if not already fetched for current route
+  if (waypoints.length > 0 && !elevationReady) {
     clearTimeout(eleTimer);
     eleTimer = setTimeout(fetchRouteElevation, 900);
   }
@@ -868,16 +867,21 @@ async function fetchRouteElevation() {
       }
     }
 
-    const lats = sampled.map(({p}) => p.lat.toFixed(5)).join(',');
-    const lngs = sampled.map(({p}) => p.lng.toFixed(5)).join(',');
-    const url  = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`;
-    const r    = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    // Use POST to avoid URL length limits with many coordinates
+    const lats = sampled.map(({p}) => parseFloat(p.lat.toFixed(5)));
+    const lngs = sampled.map(({p}) => parseFloat(p.lng.toFixed(5)));
+    const r = await fetch('https://api.open-meteo.com/v1/elevation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ latitude: lats, longitude: lngs }),
+      signal: AbortSignal.timeout(10000)
+    });
     if (!r.ok) throw new Error('API error');
-    const j    = await r.json();
+    const j = await r.json();
     const elevs = j.elevation;
     if (!elevs || elevs.length !== sampled.length) throw new Error('Bad response');
 
-    // Map sampled elevations back
+    // Map sampled elevations back to all waypoints
     routeElevations = new Array(pts.length).fill(null);
     sampled.forEach(({i}, si) => {
       routeElevations[i] = elevs[si];
@@ -899,12 +903,21 @@ async function fetchRouteElevation() {
       }
     }
 
+    // Compute ascent/descent from elevation profile
+    let up = 0, down = 0;
+    for (let i=1; i<routeElevations.length; i++) {
+      const d = (routeElevations[i] ?? 0) - (routeElevations[i-1] ?? 0);
+      if (d > 0) up += d; else down += Math.abs(d);
+    }
+    if (up > 0 || down > 0) {
+      document.getElementById('statUp').textContent   = '+' + Math.round(up)   + 'm';
+      document.getElementById('statDown').textContent = '-' + Math.round(down) + 'm';
+    }
+
     const lastEle = routeElevations[routeElevations.length-1];
     if (lastEle !== null) document.getElementById('statEle').textContent = Math.round(lastEle)+' m';
     updateStats();
   } catch(e) {
-    document.getElementById('statUp').textContent   = '– m';
-    document.getElementById('statDown').textContent = '– m';
     showToast('⚠️ Korkeustietoa ei saatu');
   }
 }
