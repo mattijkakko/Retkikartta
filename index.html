@@ -293,7 +293,48 @@ white-space: nowrap; backdrop-filter: blur(6px);
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
-/* ── STATS PANEL — sits below map ── */
+/* ── PLANNED ROUTE GHOST (shown during live tracking) ── */
+.plan-ghost { stroke: #b07d2a; stroke-width: 3; stroke-dasharray: 8,6; opacity: 0.55; }
+
+/* ── ROUTING SPINNER ── */
+.routing-spinner {
+position: absolute; top: 50%; left: 50%;
+transform: translate(-50%,-50%);
+background: rgba(255,255,255,0.95);
+border: 1px solid var(–border);
+border-radius: var(–radius);
+padding: 14px 20px;
+font-size: 0.82rem; font-weight: 500;
+color: var(–text2);
+z-index: 600;
+display: none;
+box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+text-align: center;
+gap: 8px;
+}
+.routing-spinner.visible { display: flex; align-items: center; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner-icon { display:inline-block; animation: spin 0.8s linear infinite; margin-right:6px; }
+
+/* ── SEGMENT LEGEND (live track) ── */
+.track-legend {
+position: absolute; bottom: 62px; left: 12px;
+background: rgba(255,255,255,0.94);
+border: 1px solid var(–border);
+border-radius: 10px;
+padding: 6px 10px;
+font-size: 0.68rem; font-weight: 500;
+z-index: 500;
+display: none;
+flex-direction: column; gap: 4px;
+backdrop-filter: blur(8px);
+box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.track-legend.visible { display: flex; }
+.legend-row { display: flex; align-items: center; gap: 6px; color: var(–text2); }
+.legend-line { width: 20px; height: 3px; border-radius: 2px; flex-shrink:0; }
+.legend-line.gps   { background: #3478f6; }
+.legend-line.plan  { background: #b07d2a; border-top: 2px dashed #b07d2a; height:0; }
 .stats-panel {
 flex-shrink: 0;
 background: var(–surface);
@@ -351,12 +392,19 @@ border-radius:var(–radius);padding:7px 6px;text-align:center;
   <!-- BOTTOM ACTION BAR -->
 
   <div class="action-bar">
-    <button class="act-btn primary" id="btnDraw" onclick="toggleDrawing()">✏️ Piirrä</button>
+    <button class="act-btn primary" id="btnDraw"  onclick="toggleDrawing()">✏️ Piirrä</button>
+    <button class="act-btn"         id="btnRoute" onclick="toggleRouting()">🧭 Reititä</button>
     <button class="act-btn" onclick="document.getElementById('gpxInput').click()">📂 GPX</button>
     <button class="act-btn" onclick="exportGPX('track')" id="btnExportTrack" style="display:none">⬇️ Tallenne</button>
     <button class="act-btn" onclick="exportGPX('route')" id="btnExportRoute" style="display:none">⬇️ Reitti</button>
   </div>
   <input type="file" id="gpxInput" accept=".gpx,.xml,application/gpx+xml,application/xml,text/xml,*/*" style="display:none" onchange="importGPX(event)">
+
+  <!-- ROUTING INDICATOR -->
+
+  <div id="routeIndicator" class="draw-indicator" style="background:rgba(255,248,230,0.97);border-color:#c8a84b;color:#7a5c1e;">
+    🧭 Napauta: 1. lähtöpiste → 2. määränpää
+  </div>
 
   <!-- TRACKING OVERLAY -->
 
@@ -370,7 +418,12 @@ border-radius:var(–radius);padding:7px 6px;text-align:center;
 
 <button id="centerToggle" class="center-toggle locked" onclick="toggleCenter()">🔒 Seuraa sijaintia</button>
 
-  <div id="drawIndicator" class="draw-indicator">✏️ Napauta karttaan lisätäksesi pisteitä</div>
+  <div id="drawIndicator"  class="draw-indicator">✏️ Napauta karttaan lisätäksesi pisteitä</div>
+  <div id="routingSpinner" class="routing-spinner"><span class="spinner-icon">⏳</span> Haetaan reittiä…</div>
+  <div id="trackLegend"    class="track-legend">
+    <div class="legend-row"><div class="legend-line gps"></div>GPS-seuranta</div>
+    <div class="legend-row"><div class="legend-line plan"></div>Suunnitelma</div>
+  </div>
   <div id="toast"></div>
 </div>
 
@@ -506,7 +559,152 @@ function updateRoute() {
   updateStats();
 }
 
-// ── STATS & ELEVATION ─────────────────────────────────────
+// ── ROUTING ───────────────────────────────────────────────
+const GH_KEY = 'e379a544-f2a3-4ad2-93c0-a2b43ce9047a';
+let routing = false;
+let routeClickPts = [];      // [start, end] tapped by user
+let routeMarkers  = [];      // temp markers during routing
+let plannedRoute  = [];      // final routed latlngs (full path)
+let planLine      = null;    // ghost dashed line on map
+let planGhostLine = null;    // shown during live tracking
+
+function toggleRouting() {
+  routing = !routing;
+  drawing = false; // can't do both
+  document.getElementById('drawIndicator').classList.remove('visible');
+  document.getElementById('btnDraw').classList.remove('primary');
+  document.getElementById('routeIndicator').classList.toggle('visible', routing);
+  document.getElementById('btnRoute').classList.toggle('primary', routing);
+  map.getContainer().style.cursor = routing ? 'crosshair' : '';
+  routeClickPts = [];
+  routeMarkers.forEach(m => m.remove()); routeMarkers = [];
+  if (!routing) showToast('Reititys pois');
+}
+
+map.on('click', async e => {
+  if (drawing) { addWaypoint(e.latlng); return; }
+  if (!routing) return;
+
+  routeClickPts.push(e.latlng);
+
+  // Show tap marker
+  const isFirst = routeClickPts.length === 1;
+  const icon = L.divIcon({ className:'', html:`<div class="wp wp-${isFirst?'start':'end'}"></div>`, iconSize:[18,18], iconAnchor:[9,9] });
+  routeMarkers.push(L.marker(e.latlng, { icon }).addTo(map));
+
+  if (routeClickPts.length === 1) {
+    showToast('🧭 Napauta nyt määränpää');
+    return;
+  }
+
+  // We have both points — fetch route
+  document.getElementById('routingSpinner').classList.add('visible');
+  const [from, to] = routeClickPts;
+  try {
+    const url = `https://graphhopper.com/api/1/route?point=${from.lat},${from.lng}&point=${to.lat},${to.lng}&profile=hike&locale=fi&points_encoded=false&key=${GH_KEY}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    if (!j.paths?.length) throw new Error('No path');
+
+    const coords = j.paths[0].points.coordinates; // [lng, lat, ele?]
+    plannedRoute = coords.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll; });
+
+    // Draw planned route — replace existing route
+    clearPlannedRoute();
+    waypoints = plannedRoute;
+    planLine = L.polyline(plannedRoute, { color:'#b07d2a', weight:4, opacity:0.9, lineJoin:'round', lineCap:'round' }).addTo(map);
+    routeLine = planLine;
+    map.fitBounds(planLine.getBounds(), { padding:[30,30] });
+
+    // Elevation from GraphHopper response
+    const ascend  = Math.round(j.paths[0].ascend  ?? 0);
+    const descend = Math.round(j.paths[0].descend ?? 0);
+    document.getElementById('statUp').textContent   = '+'+ascend+'m';
+    document.getElementById('statDown').textContent = '-'+descend+'m';
+    routeElevations = plannedRoute.map(p => p.ele);
+
+    updateStats();
+    document.getElementById('btnExportRoute').style.display = '';
+    showToast(`🧭 Reitti löydetty — ${(j.paths[0].distance/1000).toFixed(2)} km`);
+  } catch(err) {
+    showToast('⚠️ Reittiä ei löydy — kokeile eri pisteitä');
+  } finally {
+    document.getElementById('routingSpinner').classList.remove('visible');
+    // Reset for next routing
+    routeClickPts = [];
+    routeMarkers.forEach(m => m.remove()); routeMarkers = [];
+    routing = false;
+    document.getElementById('routeIndicator').classList.remove('visible');
+    document.getElementById('btnRoute').classList.remove('primary');
+    map.getContainer().style.cursor = '';
+  }
+});
+
+function clearPlannedRoute() {
+  if (planLine) { map.removeLayer(planLine); planLine = null; }
+  if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
+  waypoints = []; markers.forEach(m => m.remove()); markers = [];
+  routeElevations = []; plannedRoute = [];
+}
+
+// Show planned route as ghost during live tracking
+function showPlanGhost() {
+  if (!plannedRoute.length) return;
+  if (planGhostLine) { map.removeLayer(planGhostLine); }
+  planGhostLine = L.polyline(plannedRoute, {
+    color: '#b07d2a', weight: 3, opacity: 0.5,
+    dashArray: '8,6', lineJoin: 'round'
+  }).addTo(map);
+  // Keep GPS track on top
+  if (trackLine) trackLine.bringToFront();
+  document.getElementById('trackLegend').classList.add('visible');
+}
+
+function hidePlanGhost() {
+  if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
+  document.getElementById('trackLegend').classList.remove('visible');
+}
+
+// ── TRACKING GAP FILL ─────────────────────────────────────
+// When GPS signal is lost and we have a planned route,
+// find the nearest point on the plan and interpolate forward
+let lastGpsLl = null;
+let gapFillLine = null;
+let gpsLostTimer = null;
+const GPS_TIMEOUT_MS = 25000; // consider signal lost after 25s
+
+function scheduleGpsLostCheck() {
+  clearTimeout(gpsLostTimer);
+  gpsLostTimer = setTimeout(() => {
+    if (!tracking || !plannedRoute.length || !lastGpsLl) return;
+    showToast('📡 GPS-signaali heikko — täydennetään suunnitelmasta');
+    fillGapFromPlan();
+  }, GPS_TIMEOUT_MS);
+}
+
+function fillGapFromPlan() {
+  if (!lastGpsLl || !plannedRoute.length) return;
+  // Find closest point on planned route to last known GPS position
+  let minDist = Infinity, closestIdx = 0;
+  plannedRoute.forEach((p, i) => {
+    const d = haversine(lastGpsLl, p);
+    if (d < minDist) { minDist = d; closestIdx = i; }
+  });
+  // Take plan from that point forward as gap fill
+  const gapPts = [lastGpsLl, ...plannedRoute.slice(closestIdx)];
+  if (gapFillLine) map.removeLayer(gapFillLine);
+  gapFillLine = L.polyline(gapPts, {
+    color: '#b07d2a', weight: 3, opacity: 0.7,
+    dashArray: '6,5', lineJoin: 'round'
+  }).addTo(map);
+  // Keep GPS track on top
+  if (trackLine) trackLine.bringToFront();
+}
+
+function clearGapFill() {
+  if (gapFillLine) { map.removeLayer(gapFillLine); gapFillLine = null; }
+}
 function haversine(a,b) {
   const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lng-a.lng)*Math.PI/180;
   const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
@@ -748,6 +946,7 @@ function toggleTracking() { tracking?stopTracking():startTracking(); }
 function startTracking() {
   if(!navigator.geolocation){showToast('⚠️ GPS ei tuettu');return;}
   tracking=true; trackPts=[]; trackStart=Date.now(); centerLocked=true;
+  lastGpsLl = null; lastGpsTime = 0;
   const btn = document.getElementById('fabTrack');
   btn.classList.remove('track-off'); btn.classList.add('track-on');
   btn.textContent='⏹️';
@@ -756,6 +955,8 @@ function startTracking() {
   if(trackLine){map.removeLayer(trackLine);trackLine=null;}
   clearTrackStorage();
   requestWakeLock();
+  // Show planned route as ghost reference if one exists
+  if (plannedRoute.length) showPlanGhost();
   watchId=navigator.geolocation.watchPosition(onGps,()=>showToast('⚠️ GPS-virhe'),{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
   trackTimer=setInterval(updateTrackTime,1000);
   showToast('🛰️ GPS-seuranta käynnistetty — näyttö pysyy päällä');
@@ -763,9 +964,11 @@ function startTracking() {
 
 function stopTracking() {
   if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
-  clearInterval(trackTimer); tracking=false;
+  clearInterval(trackTimer); clearTimeout(gpsLostTimer); tracking=false;
   releaseWakeLock();
   saveTrackToStorage();
+  clearGapFill();
+  hidePlanGhost();
   const btn = document.getElementById('fabTrack');
   btn.classList.remove('track-on'); btn.classList.add('track-off');
   btn.textContent='🛰️';
@@ -788,6 +991,9 @@ function onGps(pos) {
   ll.ele = ele;
   placeGpsDot(ll,pos.coords.accuracy);
   trackPts.push(ll);
+  lastGpsLl = ll;
+  clearGapFill(); // GPS is back — remove any gap fill
+  scheduleGpsLostCheck(); // restart the lost-signal timer
 
   // Update live elevation display
   if (ele !== null) {
@@ -1028,6 +1234,24 @@ function importGPX(event) {
   };
   reader.readAsText(file);
 }
+function clearRoute() {
+  waypoints=[]; markers.forEach(m=>m.remove()); markers=[];
+  routeElevations=[]; plannedRoute=[];
+  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  if(planLine){map.removeLayer(planLine);planLine=null;}
+  clearGapFill(); hidePlanGhost();
+  trackPts=[];
+  if(trackLine){map.removeLayer(trackLine);trackLine=null;}
+  clearTrackStorage();
+  document.getElementById('btnExportTrack').style.display='none';
+  document.getElementById('btnExportRoute').style.display='none';
+  document.getElementById('statUp').textContent='– m';
+  document.getElementById('statDown').textContent='– m';
+  document.getElementById('statEle').textContent='– m';
+  updateStats();
+  showToast('Kartta tyhjennetty');
+}
+
 let toastTimer;
 function showToast(msg) {
   const el=document.getElementById('toast');
