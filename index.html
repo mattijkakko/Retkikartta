@@ -513,6 +513,7 @@ function toggleDrawing() {
 map.on('click', e => { if (drawing) addWaypoint(e.latlng); });
 
 function addWaypoint(latlng) {
+  elevationReady = false; // new point added — re-fetch elevation
   waypoints.push(latlng);
   const isFirst = waypoints.length === 1;
   const s = isFirst?18:14, a=s/2;
@@ -916,6 +917,8 @@ async function fetchRouteElevation() {
 
     const lastEle = routeElevations[routeElevations.length-1];
     if (lastEle !== null) document.getElementById('statEle').textContent = Math.round(lastEle)+' m';
+    elevationReady = true;
+    // Recalculate time with Tobler — safe to call now, elevationReady prevents re-fetch
     updateStats();
   } catch(e) {
     showToast('⚠️ Korkeustietoa ei saatu');
@@ -1317,7 +1320,8 @@ function importGPX(event) {
 }
 function clearRoute() {
   waypoints=[]; markers.forEach(m=>m.remove()); markers=[];
-  routeElevations=[]; plannedRoute=[];
+  routeElevations=[]; plannedRoute=[]; elevationReady=false;
+  clearTimeout(eleTimer);
   if(routeLine){map.removeLayer(routeLine);routeLine=null;}
   if(planLine){map.removeLayer(planLine);planLine=null;}
   clearGapFill(); hidePlanGhost();
