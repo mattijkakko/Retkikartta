@@ -642,12 +642,13 @@ let freehandActive = false; // true while finger is down
 
 function toggleFreehand() {
   freehand = !freehand;
-  if (drawing) toggleDrawing(); // can't have both
+  if (drawing) toggleDrawing();
   document.getElementById('btnFreehand').classList.toggle('active', freehand);
   const ind = document.getElementById('freehandIndicator');
   ind.style.display = freehand ? 'block' : 'none';
-  map.getContainer().style.cursor = freehand ? 'crosshair' : '';
   if (!freehand) {
+    map.dragging.enable();
+    map.getContainer().style.cursor = '';
     cleanupFreehand();
     showToast('Vapaa piirto pois');
   } else {
@@ -662,16 +663,19 @@ function cleanupFreehand() {
 
 // Touch events for freehand on map container
 const mapEl = document.getElementById('map');
+let freehandStarted = false; // only true after meaningful movement
 
 mapEl.addEventListener('touchstart', e => {
   if (!freehand) return;
   e.preventDefault();
-  freehandActive = true;
-  freehandPts = [];
+  map.dragging.disable(); // prevent map pan while drawing
+  freehandActive  = true;
+  freehandStarted = false;
+  freehandPts     = [];
   if (freehandLine) { map.removeLayer(freehandLine); freehandLine = null; }
   const touch = e.touches[0];
-  const ll = map.containerPointToLatLng([touch.clientX - mapEl.getBoundingClientRect().left,
-                                          touch.clientY - mapEl.getBoundingClientRect().top]);
+  const rect  = mapEl.getBoundingClientRect();
+  const ll    = map.containerPointToLatLng([touch.clientX - rect.left, touch.clientY - rect.top]);
   freehandPts.push(ll);
 }, { passive: false });
 
@@ -681,10 +685,12 @@ mapEl.addEventListener('touchmove', e => {
   const touch = e.touches[0];
   const rect  = mapEl.getBoundingClientRect();
   const ll    = map.containerPointToLatLng([touch.clientX - rect.left, touch.clientY - rect.top]);
-  // Downsample: only add point if moved enough
-  const last = freehandPts[freehandPts.length - 1];
-  if (last && haversine(last, ll) < 0.005) return; // < ~5m
+  const last  = freehandPts[freehandPts.length - 1];
+  // Require at least ~15m movement between recorded points
+  if (last && haversine(last, ll) < 0.015) return;
   freehandPts.push(ll);
+  freehandStarted = freehandPts.length >= 4;
+  if (!freehandStarted) return; // don't draw until enough points
   if (!freehandLine) {
     freehandLine = L.polyline(freehandPts, { color:'#3478f6', weight:4, opacity:0.85,
       dashArray:'7,5', lineJoin:'round', lineCap:'round' }).addTo(map);
@@ -697,10 +703,15 @@ mapEl.addEventListener('touchend', e => {
   if (!freehand || !freehandActive) return;
   e.preventDefault();
   freehandActive = false;
-  if (freehandPts.length < 3) { cleanupFreehand(); return; }
+  map.dragging.enable(); // restore map pan
 
-  // Simplify with Ramer–Douglas–Peucker
-  const simplified = rdp(freehandPts, 0.00015);
+  if (freehandPts.length < 5 || !freehandStarted) { cleanupFreehand(); return; }
+  let totalDist = 0;
+  for (let i=1; i<freehandPts.length; i++) totalDist += haversine(freehandPts[i-1], freehandPts[i]);
+  if (totalDist < 0.03) { cleanupFreehand(); return; }
+
+  const simplified = rdp(freehandPts, 0.0003);
+  if (simplified.length < 2) { cleanupFreehand(); return; }
   spliceDrawnSegment(simplified);
   cleanupFreehand();
 }, { passive: false });
@@ -708,7 +719,7 @@ mapEl.addEventListener('touchend', e => {
 // Mouse fallback for desktop testing
 mapEl.addEventListener('mousedown', e => {
   if (!freehand || e.button !== 0) return;
-  freehandActive = true; freehandPts = [];
+  freehandActive = true; freehandStarted = false; freehandPts = [];
   if (freehandLine) { map.removeLayer(freehandLine); freehandLine = null; }
   const rect = mapEl.getBoundingClientRect();
   freehandPts.push(map.containerPointToLatLng([e.clientX-rect.left, e.clientY-rect.top]));
@@ -718,8 +729,10 @@ mapEl.addEventListener('mousemove', e => {
   const rect = mapEl.getBoundingClientRect();
   const ll   = map.containerPointToLatLng([e.clientX-rect.left, e.clientY-rect.top]);
   const last = freehandPts[freehandPts.length-1];
-  if (last && haversine(last, ll) < 0.005) return;
+  if (last && haversine(last, ll) < 0.015) return;
   freehandPts.push(ll);
+  freehandStarted = freehandPts.length >= 4;
+  if (!freehandStarted) return;
   if (!freehandLine) {
     freehandLine = L.polyline(freehandPts, {color:'#3478f6',weight:4,opacity:0.85,dashArray:'7,5',lineJoin:'round',lineCap:'round'}).addTo(map);
   } else { freehandLine.setLatLngs(freehandPts); }
@@ -727,8 +740,11 @@ mapEl.addEventListener('mousemove', e => {
 mapEl.addEventListener('mouseup', e => {
   if (!freehand || !freehandActive) return;
   freehandActive = false;
-  if (freehandPts.length < 3) { cleanupFreehand(); return; }
-  spliceDrawnSegment(rdp(freehandPts, 0.00015));
+  if (freehandPts.length < 5 || !freehandStarted) { cleanupFreehand(); return; }
+  let totalDist = 0;
+  for (let i=1; i<freehandPts.length; i++) totalDist += haversine(freehandPts[i-1], freehandPts[i]);
+  if (totalDist < 0.03) { cleanupFreehand(); return; }
+  spliceDrawnSegment(rdp(freehandPts, 0.0003));
   cleanupFreehand();
 });
 
@@ -757,29 +773,37 @@ function perpendicularDist(p, a, b) {
 
 function clearRoute() {
   clearTimeout(eleTimer);
-  // Clear all segment lines
-  segmentLines.forEach(l => map.removeLayer(l)); segmentLines = [];
-  segments = []; waypoints = []; routeElevations = [];
-  // Clear markers
-  markers.forEach(m => m.remove()); markers = [];
-  routeMarkers.forEach(m => m.remove()); routeMarkers = [];
-  // Clear all named lines
-  [routeLine, planLine, planGhostLine, gapFillLine, trackLine].forEach(l => { if(l) map.removeLayer(l); });
-  routeLine = null; planLine = null; planGhostLine = null; gapFillLine = null;
-  plannedRoute = [];
-  // Clear GPS track
-  trackPts = []; clearTrackStorage();
-  if(trackLine){ map.removeLayer(trackLine); trackLine = null; }
-  // Clear freehand
+
+  // Segment lines
+  segmentLines.forEach(l => map.removeLayer(l));
+  segmentLines = [];
+  segments     = [];
+
+  // Named lines
+  if (routeLine)     { map.removeLayer(routeLine);     routeLine     = null; }
+  if (planLine)      { map.removeLayer(planLine);      planLine      = null; }
+  if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
+  if (gapFillLine)   { map.removeLayer(gapFillLine);   gapFillLine   = null; }
+  if (trackLine)     { map.removeLayer(trackLine);     trackLine     = null; }
+
+  // Markers
+  markers.forEach(m => m.remove());       markers       = [];
+  routeMarkers.forEach(m => m.remove());  routeMarkers  = [];
+
+  // Data
+  waypoints = []; routeElevations = []; plannedRoute = []; trackPts = [];
+  clearTrackStorage();
   cleanupFreehand();
+
+  // UI
   document.getElementById('btnExportTrack').style.display = 'none';
   document.getElementById('btnExportRoute').style.display = 'none';
-  document.getElementById('statUp').textContent    = '– m';
-  document.getElementById('statDown').textContent  = '– m';
-  document.getElementById('statEle').textContent   = '– m';
-  document.getElementById('statDist').textContent  = '0 km';
-  document.getElementById('statTime').textContent  = '0 min';
-  updateStats();
+  document.getElementById('statUp').textContent   = '– m';
+  document.getElementById('statDown').textContent = '– m';
+  document.getElementById('statEle').textContent  = '– m';
+  document.getElementById('statDist').textContent = '0 km';
+  document.getElementById('statTime').textContent = '0 min';
+
   showToast('Kartta tyhjennetty');
 }
 
