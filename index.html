@@ -513,49 +513,88 @@ function changeLayer(name) {
 }
 
 // ── STATE ─────────────────────────────────────────────────
-let waypoints=[], markers=[], routeLine=null, drawing=false, withDog=false;
-const SPEED = { normal:4.5, dog:3.5 };
+let waypoints     = [];    // flat array of all route latlngs
+let waypointTypes = [];    // 'routed'|'drawn' per waypoint
+let segmentLines  = [];    // rendered Leaflet polylines
+let markers       = [];
+let routeLine     = null;
+let drawing       = false;
+let withDog       = false;
+const SPEED       = { normal:4.5, dog:3.5 };
 
-// Segment-based route: each segment is {type:'routed'|'drawn', points:[latlng,...]}
-let segments     = [];   // all segments
-let segmentLines = [];   // corresponding Leaflet polylines
-
-function segmentColor(type) {
-  return type === 'routed' ? '#b07d2a' : '#3478f6';
-}
-function segmentDash(type) {
-  return type === 'routed' ? null : '7,5';
-}
-
-// Rebuild unified waypoints array and redraw all segment lines
-function rebuildFromSegments() {
-  // Remove old segment lines
-  segmentLines.forEach(l => map.removeLayer(l));
-  segmentLines = [];
-  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-
-  if (!segments.length) { waypoints = []; updateStats(); return; }
-
-  // Draw each segment as its own polyline
-  segments.forEach(seg => {
-    const line = L.polyline(seg.points, {
-      color: segmentColor(seg.type),
-      weight: 4, opacity: 0.9,
-      lineJoin: 'round', lineCap: 'round',
-      dashArray: segmentDash(seg.type)
-    }).addTo(map);
-    segmentLines.push(line);
+// ── ACTION HISTORY ─────────────────────────────────────────
+let actionHistory = [];
+function saveHistory() {
+  actionHistory.push({
+    wp:  waypoints.map(p => L.latLng(p.lat, p.lng)),
+    wt:  [...waypointTypes]
   });
+  if (actionHistory.length > 30) actionHistory.shift();
+}
+function undoLast() {
+  if (!actionHistory.length) { showToast('Ei kumottavaa'); return; }
+  const s = actionHistory.pop();
+  waypoints = s.wp; waypointTypes = s.wt;
+  rebuildPolylines();
+  showToast('↩️ Kumottu');
+}
 
-  // Flatten all points into waypoints for stats/elevation
-  waypoints = segments.flatMap(s => s.points);
+// ── REBUILD POLYLINES ──────────────────────────────────────
+function rebuildPolylines() {
+  segmentLines.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+  segmentLines = [];
+  if (routeLine) { try { map.removeLayer(routeLine); } catch(e){} routeLine = null; }
+  if (waypoints.length < 2) { updateStats(); return; }
+
+  let i = 0;
+  while (i < waypoints.length - 1) {
+    const type = waypointTypes[i] || 'drawn';
+    let j = i + 1;
+    while (j < waypoints.length && (waypointTypes[j] || 'drawn') === type) j++;
+    // Include one overlap point so segments connect
+    const pts = waypoints.slice(i, Math.min(j + 1, waypoints.length));
+    if (pts.length > 1) {
+      const line = L.polyline(pts, {
+        color:     type === 'routed' ? '#b07d2a' : '#3478f6',
+        weight: 4, opacity: 0.9,
+        lineJoin: 'round', lineCap: 'round',
+        dashArray: type === 'routed' ? null : '7,5'
+      }).addTo(map);
+      segmentLines.push(line);
+    }
+    i = j;
+  }
+
   clearTimeout(eleTimer);
-  eleTimer = setTimeout(fetchRouteElevation, 1000);
+  eleTimer = setTimeout(fetchRouteElevation, 1200);
   updateStats();
   document.getElementById('btnExportRoute').style.display = waypoints.length > 1 ? '' : 'none';
 }
+function updateRoute() { rebuildPolylines(); }
 
-// Find closest point index on existing route to a given latlng
+// ── DRAWING (point-by-point) ───────────────────────────────
+function toggleDrawing() {
+  drawing = !drawing;
+  if (freehand) toggleFreehand();
+  document.getElementById('drawIndicator').classList.toggle('visible', drawing);
+  document.getElementById('btnDraw').classList.toggle('primary', drawing);
+  map.getContainer().style.cursor = drawing ? 'crosshair' : '';
+  showToast(drawing ? '✏️ Napauta karttaan lisätäksesi pisteitä' : 'Piirtotila pois');
+}
+
+map.on('click', e => {
+  if (drawing) addWaypoint(e.latlng);
+  else if (routing) addRoutePoint(e.latlng);
+});
+
+function addWaypoint(latlng) {
+  saveHistory();
+  waypoints.push(latlng);
+  waypointTypes.push('drawn');
+  rebuildPolylines();
+}
+
+// ── FREEHAND SPLICE ────────────────────────────────────────
 function closestRouteIdx(latlng) {
   let minD = Infinity, idx = 0;
   waypoints.forEach((p, i) => {
@@ -565,80 +604,64 @@ function closestRouteIdx(latlng) {
   return idx;
 }
 
-// Replace route section between two latlngs with freehand points
 function spliceDrawnSegment(drawnPts) {
   if (!drawnPts.length) return;
+  saveHistory();
+
   if (!waypoints.length) {
-    // No existing route — just add as drawn segment
-    segments = [{ type: 'drawn', points: drawnPts }];
-    rebuildFromSegments();
+    waypoints     = drawnPts;
+    waypointTypes = drawnPts.map(() => 'drawn');
+    rebuildPolylines();
     return;
   }
 
-  const startIdx = closestRouteIdx(drawnPts[0]);
-  const endIdx   = closestRouteIdx(drawnPts[drawnPts.length - 1]);
-  const lo = Math.min(startIdx, endIdx);
-  const hi = Math.max(startIdx, endIdx);
+  const si = closestRouteIdx(drawnPts[0]);
+  const ei = closestRouteIdx(drawnPts[drawnPts.length - 1]);
+  const lo = Math.min(si, ei);
+  const hi = Math.max(si, ei);
+  const ordered = si <= ei ? drawnPts : [...drawnPts].reverse();
 
-  // Rebuild flat waypoints with splice
-  const before = waypoints.slice(0, lo);
-  const after  = waypoints.slice(hi + 1);
-  const ordered = startIdx <= endIdx ? drawnPts : [...drawnPts].reverse();
+  waypoints     = [...waypoints.slice(0, lo + 1), ...ordered, ...waypoints.slice(hi)];
+  waypointTypes = [...waypointTypes.slice(0, lo + 1), ...ordered.map(() => 'drawn'), ...waypointTypes.slice(hi)];
 
-  // Convert back to segments: before (routed) + drawn + after (routed)
-  const newSegs = [];
-  if (before.length > 1)  newSegs.push({ type: 'routed', points: before });
-  newSegs.push({ type: 'drawn', points: ordered });
-  if (after.length > 1)   newSegs.push({ type: 'routed', points: after });
-
-  segments = newSegs;
-  rebuildFromSegments();
-  showToast(`✅ Piirretty osuus lisätty (${drawnPts.length} pistettä)`);
+  rebuildPolylines();
+  showToast('✅ Piirretty osuus lisätty');
 }
 
-// ── POINT-BY-POINT DRAWING ────────────────────────────────
-function toggleDrawing() {
-  drawing = !drawing;
-  if (freehand) toggleFreehand(); // can't have both
-  document.getElementById('drawIndicator').classList.toggle('visible', drawing);
-  document.getElementById('btnDraw').classList.toggle('primary', drawing);
-  map.getContainer().style.cursor = drawing ? 'crosshair' : '';
-  showToast(drawing ? '✏️ Napauta karttaan lisätäksesi pisteitä' : 'Piirtotila pois');
-}
+// ── CLEAR ALL ─────────────────────────────────────────────
+function clearRoute() {
+  clearTimeout(eleTimer);
+  actionHistory = [];
 
-// Single unified map click handler
-map.on('click', e => {
-  if (drawing) { addWaypoint(e.latlng); return; }
-  if (routing)  { addRoutePoint(e.latlng); return; }
-});
+  segmentLines.forEach(l => { try { map.removeLayer(l); } catch(e){} }); segmentLines = [];
+  [routeLine,planLine,planGhostLine,gapFillLine,trackLine,freehandLine,gpsMarker,gpsCircle].forEach(l => {
+    if (l) try { map.removeLayer(l); } catch(e){}
+  });
+  routeLine=null; planLine=null; planGhostLine=null; gapFillLine=null;
+  trackLine=null; freehandLine=null; gpsMarker=null; gpsCircle=null;
 
-function addWaypoint(latlng) {
-  pushHistory('segment', null);
-  if (!segments.length || segments[segments.length-1].type !== 'drawn') {
-    segments.push({ type: 'drawn', points: [latlng] });
-  } else {
-    segments[segments.length-1].points.push(latlng);
-  }
-  rebuildFromSegments();
-}
+  markers.forEach(m => { try { map.removeLayer(m); } catch(e){} });      markers=[];
+  routeMarkers.forEach(m => { try { map.removeLayer(m); } catch(e){} }); routeMarkers=[];
 
-function undoLast() {
-  if (!segments.length) return;
-  const last = segments[segments.length-1];
-  if (last.points.length > 1) {
-    last.points.pop();
-  } else {
-    segments.pop();
-  }
-  rebuildFromSegments();
-  showToast('Viimeinen piste poistettu');
+  waypoints=[]; waypointTypes=[]; routeElevations=[];
+  plannedRoute=[]; trackPts=[]; freehandPts=[]; freehandActive=false;
+  clearTrackStorage();
+
+  document.getElementById('btnExportTrack').style.display='none';
+  document.getElementById('btnExportRoute').style.display='none';
+  document.getElementById('statUp').textContent   ='– m';
+  document.getElementById('statDown').textContent ='– m';
+  document.getElementById('statEle').textContent  ='– m';
+  document.getElementById('statDist').textContent ='0 km';
+  document.getElementById('statTime').textContent ='0 min';
+  showToast('Kartta tyhjennetty');
 }
 
 // ── FREEHAND DRAWING ──────────────────────────────────────
-let freehand      = false;
-let freehandPts   = [];
-let freehandLine  = null;
-let freehandActive = false; // true while finger is down
+let freehand       = false;
+let freehandPts    = [];
+let freehandLine   = null;
+let freehandActive = false;
 
 function toggleFreehand() {
   freehand = !freehand;
@@ -684,19 +707,28 @@ mapEl.addEventListener('touchmove', e => {
   e.preventDefault();
   const touch = e.touches[0];
   const rect  = mapEl.getBoundingClientRect();
-  const ll    = map.containerPointToLatLng([touch.clientX - rect.left, touch.clientY - rect.top]);
-  const last  = freehandPts[freehandPts.length - 1];
-  // Require at least ~15m movement between recorded points
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
+  const ll = map.containerPointToLatLng([x, y]);
+  const last = freehandPts[freehandPts.length - 1];
   if (last && haversine(last, ll) < 0.015) return;
   freehandPts.push(ll);
   freehandStarted = freehandPts.length >= 4;
-  if (!freehandStarted) return; // don't draw until enough points
+  if (!freehandStarted) return;
   if (!freehandLine) {
     freehandLine = L.polyline(freehandPts, { color:'#3478f6', weight:4, opacity:0.85,
       dashArray:'7,5', lineJoin:'round', lineCap:'round' }).addTo(map);
   } else {
     freehandLine.setLatLngs(freehandPts);
   }
+  // Auto-pan when finger near edge (within 40px)
+  const edge = 40;
+  let dx = 0, dy = 0;
+  if (x < edge) dx = -(edge - x);
+  else if (x > rect.width - edge) dx = (edge - (rect.width - x));
+  if (y < edge) dy = -(edge - y);
+  else if (y > rect.height - edge) dy = (edge - (rect.height - y));
+  if (dx !== 0 || dy !== 0) map.panBy([dx, dy], { animate: false });
 }, { passive: false });
 
 mapEl.addEventListener('touchend', e => {
@@ -771,94 +803,6 @@ function perpendicularDist(p, a, b) {
   const t = ((p.lng-a.lng)*dx + (p.lat-a.lat)*dy) / (dx*dx+dy*dy);
   const proj = L.latLng(a.lat+t*dy, a.lng+t*dx);
   return haversine(p, proj);
-}
-
-// ── ACTION HISTORY (for undo) ──────────────────────────────
-let actionHistory = []; // stack of {type, data} for undo
-
-function pushHistory(type, data) {
-  actionHistory.push({ type, data });
-}
-
-function undoLast() {
-  if (!actionHistory.length) { showToast('Ei kumottavaa'); return; }
-  const action = actionHistory.pop();
-
-  if (action.type === 'segment') {
-    // Remove last added segment
-    if (segments.length) {
-      segments.pop();
-      rebuildFromSegments();
-      showToast('↩️ Segmentti poistettu');
-    }
-  } else if (action.type === 'route') {
-    // Restore previous segments state
-    segments = action.data;
-    rebuildFromSegments();
-    showToast('↩️ Reitti kumottu');
-  } else if (action.type === 'freehand') {
-    segments = action.data;
-    rebuildFromSegments();
-    showToast('↩️ Piirros kumottu');
-  }
-}
-
-function clearRoute() {
-  clearTimeout(eleTimer);
-  actionHistory = [];
-
-  // Remove all segment lines from map
-  segmentLines.forEach(l => { try { map.removeLayer(l); } catch(e){} });
-  segmentLines = [];
-  segments     = [];
-
-  // Remove all named route lines
-  [routeLine, planLine, planGhostLine, gapFillLine].forEach(l => {
-    if (l) try { map.removeLayer(l); } catch(e){}
-  });
-  routeLine = null; planLine = null; planGhostLine = null; gapFillLine = null;
-
-  // Remove GPS dot and accuracy circle
-  if (gpsMarker)  { try { map.removeLayer(gpsMarker);  } catch(e){} gpsMarker  = null; }
-  if (gpsCircle)  { try { map.removeLayer(gpsCircle);  } catch(e){} gpsCircle  = null; }
-
-  // Remove GPS track line
-  if (trackLine)  { try { map.removeLayer(trackLine);  } catch(e){} trackLine  = null; }
-
-  // Remove freehand preview line
-  if (freehandLine) { try { map.removeLayer(freehandLine); } catch(e){} freehandLine = null; }
-
-  // Remove all markers
-  markers.forEach(m => { try { map.removeLayer(m); } catch(e){} });
-  markers = [];
-  routeMarkers.forEach(m => { try { map.removeLayer(m); } catch(e){} });
-  routeMarkers = [];
-
-  // Reset all data
-  waypoints    = [];
-  routeElevations = [];
-  plannedRoute = [];
-  trackPts     = [];
-  freehandPts  = [];
-  freehandActive = false;
-
-  clearTrackStorage();
-
-  // Reset UI
-  document.getElementById('btnExportTrack').style.display = 'none';
-  document.getElementById('btnExportRoute').style.display = 'none';
-  document.getElementById('statUp').textContent   = '– m';
-  document.getElementById('statDown').textContent = '– m';
-  document.getElementById('statEle').textContent  = '– m';
-  document.getElementById('statDist').textContent = '0 km';
-  document.getElementById('statTime').textContent = '0 min';
-
-  showToast('Kartta tyhjennetty');
-}
-
-function updateRoute() {
-  // Legacy: called from drag on markers — rebuild from current waypoints
-  rebuildFromSegments();
 }
 
 // ── ROUTING ───────────────────────────────────────────────
@@ -948,11 +892,12 @@ async function buildRoute(pts) {
     const coords = path.points.coordinates;
     plannedRoute = coords.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll; });
 
-    // Store as routed segment — save previous state for undo
-    pushHistory('route', JSON.parse(JSON.stringify(segments.map(s => ({type:s.type, points:s.points.map(p=>({lat:p.lat,lng:p.lng}))})))));
-    segments = [{ type: 'routed', points: plannedRoute }];
-    rebuildFromSegments();
-    map.fitBounds(segmentLines[0]?.getBounds() ?? map.getBounds(), { padding:[30,30] });
+    // Store as routed segment using new flat architecture
+    saveHistory();
+    waypoints     = plannedRoute;
+    waypointTypes = plannedRoute.map(() => 'routed');
+    rebuildPolylines();
+    if (segmentLines.length) map.fitBounds(segmentLines[0].getBounds(), { padding:[30,30] });
 
     // Show ascent/descent from GH if available
     const ascend  = Math.round(path.ascend  ?? 0);
