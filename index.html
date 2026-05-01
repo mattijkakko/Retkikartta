@@ -289,7 +289,8 @@ padding: 7px 16px; border-radius: 20px;
 font-size: 0.78rem; font-weight: 500;
 z-index: 900; pointer-events: none; opacity: 0;
 transition: opacity 0.2s, transform 0.2s;
-white-space: nowrap; backdrop-filter: blur(6px);
+white-space: normal; max-width: 90%; text-align: center;
+backdrop-filter: blur(6px);
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
@@ -627,7 +628,7 @@ function addRoutePoint(latlng) {
 async function fetchRoutedPath(pts) {
   // Build query string with all points
   const pointParams = pts.map(p => `point=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join('&');
-  const url = `https://graphhopper.com/api/1/route?${pointParams}&profile=hike&locale=fi&points_encoded=false&elevation=true&key=${GH_KEY}`;
+  const url = `https://graphhopper.com/api/1/route?${pointParams}&profile=walking&locale=fi&points_encoded=false&elevation=true&key=${GH_KEY}`;
   const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
   const j = await r.json();
   if (!r.ok) {
@@ -661,7 +662,7 @@ async function buildRoute(pts) {
     document.getElementById('btnExportRoute').style.display = '';
     showToast(`🧭 Reitti löydetty — ${(path.distance/1000).toFixed(2)} km`);
   } catch(err) {
-    showToast('⚠️ Virhe: ' + err.message);
+    showToast('⚠️ ' + (err.message || 'Tuntematon virhe').slice(0, 80));
     console.error('GraphHopper error:', err);
   } finally {
     document.getElementById('routingSpinner').classList.remove('visible');
