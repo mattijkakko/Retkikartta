@@ -321,9 +321,11 @@ display:flex;align-items:center;justify-content:center;gap:4px;
   </div>
   <div class="actions">
     <button class="action-btn primary" onclick="toggleDrawing()">✏️ Piirrä reitti</button>
+    <button class="action-btn" onclick="document.getElementById('gpxInput').click()">📂 Avaa GPX</button>
     <button class="action-btn" onclick="exportGPX('track')" id="btnExportTrack" style="display:none">⬇️ GPX</button>
     <button class="action-btn" onclick="exportGPX('route')" id="btnExportRoute" style="display:none">⬇️ Reitti</button>
   </div>
+  <input type="file" id="gpxInput" accept=".gpx,application/gpx+xml" style="display:none" onchange="importGPX(event)">
 </div>
 
 <script>
@@ -677,7 +679,86 @@ function trackDistKm() {
   let d=0; for(let i=1;i<trackPts.length;i++) d+=haversine(trackPts[i-1],trackPts[i]); return d;
 }
 
-// ── TOAST ─────────────────────────────────────────────────
+// ── GPX IMPORT ────────────────────────────────────────────
+function importGPX(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const xml    = new DOMParser().parseFromString(e.target.result, 'application/xml');
+      const ns     = 'http://www.topografix.com/GPX/1/1';
+
+      // Helper: parse points from a nodelist
+      const parsePoints = (nodes, tag) => {
+        const pts = [];
+        nodes.forEach(seg => {
+          Array.from(seg.getElementsByTagNameNS(ns, tag)).forEach(pt => {
+            const lat = parseFloat(pt.getAttribute('lat'));
+            const lng = parseFloat(pt.getAttribute('lon'));
+            if (isNaN(lat)||isNaN(lng)) return;
+            const ll  = L.latLng(lat, lng);
+            const eleEl = pt.getElementsByTagNameNS(ns,'ele')[0];
+            ll.ele = eleEl ? parseFloat(eleEl.textContent) : null;
+            pts.push(ll);
+          });
+        });
+        return pts;
+      };
+
+      // Try track first (trkpt), then route (rtept), then waypoints (wpt)
+      let pts = [], importType = '';
+      const trksegs = Array.from(xml.getElementsByTagNameNS(ns,'trkseg'));
+      if (trksegs.length) {
+        pts = parsePoints(trksegs, 'trkpt');
+        importType = 'seuranta';
+      }
+      if (!pts.length) {
+        const rtes = Array.from(xml.getElementsByTagNameNS(ns,'rte'));
+        if (rtes.length) { pts = parsePoints(rtes, 'rtept'); importType = 'reitti'; }
+      }
+      if (!pts.length) {
+        // Standalone waypoints
+        const wptContainer = [xml.documentElement];
+        pts = parsePoints(wptContainer, 'wpt');
+        importType = 'reittipisteet';
+      }
+
+      if (!pts.length) { showToast('⚠️ GPX-tiedostossa ei löydy pisteitä'); return; }
+
+      // Detect: if many points → treat as recorded track (blue line)
+      // If few points → treat as planned route (gold line with markers)
+      const isTrack = pts.length > 50 || importType === 'seuranta';
+
+      if (isTrack) {
+        // Load as GPS track
+        if (trackLine) { map.removeLayer(trackLine); trackLine = null; }
+        trackPts = pts;
+        trackLine = L.polyline(trackPts, {color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
+        document.getElementById('btnExportTrack').style.display = '';
+        // Show elevation of first point with ele data
+        const firstWithEle = pts.find(p => p.ele !== null);
+        if (firstWithEle) document.getElementById('statEle').textContent = Math.round(firstWithEle.ele)+' m';
+      } else {
+        // Load as planned route with markers
+        clearRoute();
+        pts.forEach(ll => addWaypoint(ll));
+      }
+
+      // Get name from GPX metadata or track/route name
+      const nameEl = xml.querySelector('name') || xml.getElementsByTagNameNS(ns,'name')[0];
+      const gpxName = nameEl ? nameEl.textContent.trim() : file.name.replace('.gpx','');
+
+      map.fitBounds(isTrack ? trackLine.getBounds() : routeLine?.getBounds() ?? map.getBounds(), {padding:[30,30]});
+      showToast(`📂 Avattu: ${gpxName} (${pts.length} pistettä)`);
+    } catch(err) {
+      showToast('⚠️ GPX-tiedoston lukeminen epäonnistui');
+    }
+    // Reset input so same file can be reopened
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
 let toastTimer;
 function showToast(msg) {
   const el=document.getElementById('toast');
