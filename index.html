@@ -325,7 +325,7 @@ display:flex;align-items:center;justify-content:center;gap:4px;
     <button class="action-btn" onclick="exportGPX('track')" id="btnExportTrack" style="display:none">⬇️ GPX</button>
     <button class="action-btn" onclick="exportGPX('route')" id="btnExportRoute" style="display:none">⬇️ Reitti</button>
   </div>
-  <input type="file" id="gpxInput" accept=".gpx,application/gpx+xml" style="display:none" onchange="importGPX(event)">
+  <input type="file" id="gpxInput" accept=".gpx,.xml,application/gpx+xml,application/xml,text/xml,*/*" style="display:none" onchange="importGPX(event)">
 </div>
 
 <script>
