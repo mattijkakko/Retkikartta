@@ -43,14 +43,26 @@ header{background:var(–surface);padding:12px 16px 10px;display:flex;align-item
 .leaflet-control-attribution{display:none!important}
 
 /* FLOAT PILL */
-.float-pill{position:absolute;z-index:500;background:rgba(255,255,255,.94);border:1px solid var(–border);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.13);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden}
-.stack-left{left:12px;bottom:175px;display:flex;flex-direction:column;gap:0}
-.stack-right{right:12px;bottom:175px}
-.ico-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;background:none;border:none;border-bottom:1px solid var(–border);cursor:pointer;transition:background .12s}
+.float-pill{position:absolute;z-index:500;background:rgba(255,255,255,.95);border:1px solid var(–border);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.13);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden}
+
+/* LEFT STACK — GPS controls */
+.stack-left{left:12px;bottom:175px;display:flex;flex-direction:column}
+.ico-btn{width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;background:none;border:none;border-bottom:1px solid var(–border);cursor:pointer;transition:background .12s}
 .ico-btn:last-child{border-bottom:none}
 .ico-btn:active{background:var(–bg)}
-.ico-btn.track-on{background:var(–blue)!important}
-.layer-toggle-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;background:none;border:none;cursor:pointer}
+.ico-btn.track-on{background:var(–blue)!important;animation:tpulse 1.5s infinite}
+
+/* MODE STACK — movement type, top-left below zoom */
+.mode-stack{position:absolute;left:12px;top:100px;z-index:500;display:flex;flex-direction:column;background:rgba(255,255,255,.95);border:1px solid var(–border);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.13);backdrop-filter:blur(10px);overflow:hidden}
+.mode-stack-btn{display:flex;align-items:center;gap:7px;padding:9px 12px;font-family:inherit;font-size:.75rem;font-weight:500;background:none;border:none;border-bottom:1px solid var(–border);cursor:pointer;white-space:nowrap;color:var(–text2);transition:all .12s;min-width:120px}
+.mode-stack-btn:last-child{border-bottom:none}
+.mode-stack-btn:active{background:var(–bg)}
+.mode-stack-btn.active{background:var(–green-lt);color:var(–green);font-weight:600}
+.mode-stack-btn .mode-icon{font-size:1.1rem;width:22px;text-align:center}
+
+/* LAYER STACK — below zoom buttons, left */
+.layer-stack{position:absolute;left:12px;top:56px;z-index:500}
+.layer-toggle-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:none;border:none;cursor:pointer;font-weight:600}
 .layer-menu{display:none;flex-direction:column}
 .layer-menu.open{display:flex}
 .layer-menu-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;font-family:inherit;font-size:.75rem;font-weight:500;background:none;border:none;border-top:1px solid var(–border);cursor:pointer;white-space:nowrap;color:var(–text);transition:background .12s}
@@ -59,17 +71,24 @@ header{background:var(–surface);padding:12px 16px 10px;display:flex;align-item
 .dot{width:7px;height:7px;border-radius:50%;background:var(–border);flex-shrink:0}
 .layer-menu-btn.active .dot{background:var(–green)}
 
-/* ACTION BAR */
-.action-bar{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:6px;z-index:500;overflow-x:auto;padding-bottom:2px}
-.action-bar::-webkit-scrollbar{display:none}
-.act-btn{flex:0 0 auto;padding:9px 12px;border:1.5px solid var(–border);border-radius:var(–radius);background:rgba(255,255,255,.94);color:var(–text2);font-family:inherit;font-size:.76rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.1);transition:all .15s;white-space:nowrap}
-.act-btn:active{opacity:.8}
-/* Active/primary states — clearly highlighted */
-.act-btn.primary{background:var(–green);border-color:var(–green);color:#fff;box-shadow:0 2px 10px rgba(52,122,63,.4)}
-.act-btn.primary:active{background:#2a6432}
-.act-btn.active-blue{background:var(–blue);border-color:var(–blue);color:#fff;box-shadow:0 2px 10px rgba(52,120,246,.4)}
-.act-btn.active-blue:active{background:#1a5fd4}
-.act-btn.active-route{background:#c8a84b;border-color:#c8a84b;color:#fff;box-shadow:0 2px 10px rgba(200,168,75,.4)}
+/* ACTION STACK — right bottom, vertical */
+.action-stack{position:absolute;right:12px;bottom:175px;z-index:500;display:flex;flex-direction:column;background:rgba(255,255,255,.95);border:1px solid var(–border);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.13);backdrop-filter:blur(10px);overflow:hidden}
+.act-btn{display:flex;align-items:center;gap:8px;padding:10px 14px;font-family:inherit;font-size:.76rem;font-weight:500;background:none;border:none;border-bottom:1px solid var(–border);cursor:pointer;white-space:nowrap;color:var(–text2);transition:all .12s;min-width:130px}
+.act-btn:last-child{border-bottom:none}
+.act-btn:active{background:var(–bg)}
+.act-btn .act-icon{font-size:1rem;width:20px;text-align:center}
+/* Active states */
+.act-btn.active-draw  {background:var(–green-lt)!important;color:var(–green)!important;font-weight:600}
+.act-btn.active-free  {background:var(–blue-lt)!important;color:var(–blue)!important;font-weight:600}
+.act-btn.active-route {background:rgba(200,168,75,.15)!important;color:#7a5c1e!important;font-weight:600}
+
+/* SPEED MODAL */
+.speed-modal{position:absolute;bottom:175px;right:150px;z-index:600;background:var(–surface);border:1px solid var(–border);border-radius:14px;padding:14px 16px;box-shadow:0 4px 16px rgba(0,0,0,.15);backdrop-filter:blur(10px);display:none;min-width:180px}
+.speed-modal.visible{display:block}
+.speed-modal label{font-size:.72rem;font-weight:600;color:var(–text2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px}
+.speed-modal .speed-row{display:flex;align-items:center;gap:8px}
+.speed-modal input[type=range]{flex:1;accent-color:var(–green)}
+.speed-modal .speed-val{font-size:.85rem;font-weight:600;color:var(–green);min-width:40px;text-align:right}
 
 /* OVERLAYS */
 .indicator{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);border:1px solid var(–border);border-radius:20px;padding:6px 14px;font-size:.72rem;font-weight:500;z-index:500;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.1);display:none}
@@ -136,27 +155,14 @@ header{background:var(–surface);padding:12px 16px 10px;display:flex;align-item
 
 <header>
   <div class="logo">🌲 Retki <em>kartta</em></div>
-  <div class="mode-toggle">
-    <button class="mode-btn active" id="btnNormal" onclick="setMode('normal')">🚶 Kävely</button>
-    <button class="mode-btn"        id="btnDog"    onclick="setMode('dog')">🐕 Koira</button>
-  </div>
 </header>
 
 <div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden">
   <div id="map"></div>
 
-  <!-- LEFT: GPS controls -->
+  <!-- LAYER STACK — below zoom, left -->
 
-  <div class="float-pill stack-left">
-    <button class="ico-btn track-off" id="fabTrack" onclick="toggleTracking()">🛰️</button>
-    <button class="ico-btn" onclick="locateOnce()">📍</button>
-    <button class="ico-btn" onclick="undoLast()">↩️</button>
-    <button class="ico-btn" onclick="clearAll()" style="color:var(--red)">🗑️</button>
-  </div>
-
-  <!-- RIGHT: Layer switcher -->
-
-  <div class="float-pill stack-right">
+  <div class="float-pill layer-stack">
     <button class="layer-toggle-btn" onclick="toggleLayerMenu()">🗺️</button>
     <div class="layer-menu" id="layerMenu">
       <button class="layer-menu-btn active" id="lbtn-osm"       onclick="setLayer('osm')"><span class="dot"></span>OpenStreetMap</button>
@@ -168,17 +174,44 @@ header{background:var(–surface);padding:12px 16px 10px;display:flex;align-item
     </div>
   </div>
 
-  <!-- ACTION BAR -->
+  <!-- MODE STACK — movement type -->
 
-  <div class="action-bar">
-    <button class="act-btn primary" id="btnDraw"      onclick="toggleDrawing()">✏️ Piirrä</button>
-    <button class="act-btn"         id="btnFreehand"  onclick="toggleFreehand()">🖊️ Vapaa</button>
-    <button class="act-btn"         id="btnRoute"     onclick="toggleRouting()">🧭 Reititä</button>
-    <button class="act-btn"         id="btnCloseLoop" onclick="closeLoop()"     style="display:none">🔄 Ympyrä</button>
-    <button class="act-btn"         id="btnConfirm"   onclick="confirmRoute()"  style="display:none">✅ Valmis</button>
-    <button class="act-btn" onclick="document.getElementById('gpxInput').click()">📂 GPX</button>
-    <button class="act-btn" id="btnExportTrack" onclick="exportGPX('track')" style="display:none">⬇️ Tallenne</button>
-    <button class="act-btn" id="btnExportRoute" onclick="exportGPX('route')" style="display:none">⬇️ Reitti</button>
+  <div class="mode-stack" id="modeStack">
+    <button class="mode-stack-btn active" id="modeWalk" onclick="setMode('walk')"><span class="mode-icon">🚶</span>Kävely</button>
+    <button class="mode-stack-btn"        id="modeDog"  onclick="setMode('dog')"><span class="mode-icon">🐕</span>Koira</button>
+    <button class="mode-stack-btn"        id="modeRun"  onclick="setMode('run')"><span class="mode-icon">🏃</span>Juoksu</button>
+  </div>
+
+  <!-- SPEED MODAL — shown when run selected -->
+
+  <div class="speed-modal" id="speedModal">
+    <label>Juoksuvauhti tasamaalla</label>
+    <div class="speed-row">
+      <input type="range" id="runSpeed" min="4" max="20" step="0.5" value="9" oninput="updateRunSpeed()">
+      <span class="speed-val" id="runSpeedVal">9.0 km/h</span>
+    </div>
+  </div>
+
+  <!-- LEFT STACK — GPS controls -->
+
+  <div class="float-pill stack-left">
+    <button class="ico-btn track-off" id="fabTrack" onclick="toggleTracking()">🛰️</button>
+    <button class="ico-btn" onclick="locateOnce()">📍</button>
+    <button class="ico-btn" onclick="undoLast()">↩️</button>
+    <button class="ico-btn" onclick="clearAll()" style="color:var(--red)">🗑️</button>
+  </div>
+
+  <!-- ACTION STACK — right bottom -->
+
+  <div class="action-stack">
+    <button class="act-btn active-draw" id="btnDraw"      onclick="toggleDrawing()"><span class="act-icon">✏️</span>Piirrä pisteitä</button>
+    <button class="act-btn"             id="btnFreehand"  onclick="toggleFreehand()"><span class="act-icon">🖊️</span>Vapaa piirto</button>
+    <button class="act-btn"             id="btnRoute"     onclick="toggleRouting()"><span class="act-icon">🧭</span>Reititä</button>
+    <button class="act-btn"             id="btnCloseLoop" onclick="closeLoop()"    style="display:none"><span class="act-icon">🔄</span>Sulje ympyrä</button>
+    <button class="act-btn"             id="btnConfirm"   onclick="confirmRoute()" style="display:none"><span class="act-icon">✅</span>Valmis</button>
+    <button class="act-btn" onclick="document.getElementById('gpxInput').click()"><span class="act-icon">📂</span>Avaa GPX</button>
+    <button class="act-btn" id="btnExportTrack" onclick="exportGPX('track')" style="display:none"><span class="act-icon">⬇️</span>Vie tallenne</button>
+    <button class="act-btn" id="btnExportRoute" onclick="exportGPX('route')" style="display:none"><span class="act-icon">⬇️</span>Vie reitti</button>
   </div>
   <input type="file" id="gpxInput" accept=".gpx,.xml,*/*" style="display:none" onchange="importGPX(event)">
 
@@ -203,8 +236,8 @@ header{background:var(–surface);padding:12px 16px 10px;display:flex;align-item
   <div id="routingSpinner" class="routing-spinner"><span class="spin">⏳</span> Haetaan reittiä…</div>
   <div id="trackLegend" class="track-legend">
     <div class="legend-row"><div class="leg-line leg-gps"></div>GPS-jälki</div>
-    <div class="legend-row"><div class="leg-line leg-routed"></div>Reititetty</div>
-    <div class="legend-row"><div class="leg-line leg-drawn"></div>Piirretty</div>
+    <div class="legend-row"><div class="leg-line" style="background:var(--gold)"></div>Reititetty</div>
+    <div class="legend-row"><div class="leg-line" style="background:none;border-top:3px dashed var(--gold);height:0;width:22px"></div>Piirretty</div>
   </div>
   <div id="toast"></div>
 </div>
@@ -335,8 +368,8 @@ function removeLayer(l) { if (l) try { map.removeLayer(l); } catch(e){} return n
 
 function clearAll() {
   // Stop any active modes
-  if (drawing)  { drawing=false;  document.getElementById('drawInd').classList.remove('visible');  document.getElementById('btnDraw').classList.remove('primary'); }
-  if (freehand) { freehand=false; document.getElementById('freeInd').classList.remove('visible');  document.getElementById('btnFreehand').classList.remove('active-blue'); map.dragging.enable(); }
+  if (drawing)  { drawing=false;  document.getElementById('drawInd').classList.remove('visible');  document.getElementById('btnDraw').classList.remove('active-draw'); }
+  if (freehand) { freehand=false; document.getElementById('freeInd').classList.remove('visible');  document.getElementById('btnFreehand').classList.remove('active-free'); map.dragging.enable(); }
   if (routing)  { routing=false;  document.getElementById('routeInd').classList.remove('visible'); document.getElementById('btnRoute').classList.remove('active-route'); routeMarkers.forEach(m=>removeLayer(m)); routeMarkers=[]; routeClickPts=[]; }
   map.getContainer().style.cursor = '';
 
@@ -376,7 +409,7 @@ function toggleDrawing() {
   if (drawing && freehand) toggleFreehand();
   if (drawing && routing)  cancelRouting();
   document.getElementById('drawInd').classList.toggle('visible', drawing);
-  document.getElementById('btnDraw').classList.toggle('primary', drawing);
+  document.getElementById('btnDraw').classList.toggle('active-draw', drawing);
   map.getContainer().style.cursor = drawing ? 'crosshair' : '';
   showToast(drawing ? '✏️ Napauta karttaan' : 'Piirtotila pois');
 }
@@ -403,7 +436,7 @@ function toggleFreehand() {
   if (freehand && drawing)  toggleDrawing();
   if (freehand && routing)  cancelRouting();
   document.getElementById('freeInd').classList.toggle('visible', freehand);
-  document.getElementById('btnFreehand').classList.toggle('active-blue', freehand);
+  document.getElementById('btnFreehand').classList.toggle('active-free', freehand);
   if (!freehand) { map.dragging.enable(); map.getContainer().style.cursor=''; cleanFreehand(); showToast('Vapaa piirto pois'); }
   else showToast('🖊️ Piirrä sormella kartalle');
 }
@@ -442,7 +475,7 @@ function spliceFreehand(pts) {
   // Keep everything before lo (inclusive) + drawn stroke + everything from hi (inclusive)
   waypoints = [...waypoints.slice(0, lo+1), ...ordered, ...waypoints.slice(hi)];
   wpTypes   = [...wpTypes.slice(0, lo+1),   ...ordered.map(()=>'drawn'), ...wpTypes.slice(hi)];
-
+  routeElevations = []; // reset so elevation is re-fetched for the combined route
   redraw();
   showToast('✅ Osuus korvattu');
 }
@@ -589,12 +622,13 @@ async function buildRoute(pts) {
     saveState();
     waypoints = plannedRoute;
     wpTypes   = plannedRoute.map(()=>'routed');
+    routeElevations = []; // reset so fetchElevation runs fresh
     redraw();
     if (segLines.length) map.fitBounds(segLines[0].getBounds(),{padding:[30,30]});
 
     const asc=Math.round(path.ascend??0), desc=Math.round(path.descend??0);
     if (asc||desc) { document.getElementById('statUp').textContent='+'+asc+'m'; document.getElementById('statDown').textContent='-'+desc+'m'; }
-    routeElevations=plannedRoute.map(p=>p.ele);
+    // routeElevations will be fetched by scheduleElevation called inside redraw()
     document.getElementById('btnExportRoute').style.display='';
     showToast(`🧭 Reitti löydetty — ${(path.distance/1000).toFixed(2)} km`);
   } catch(e) {
@@ -608,8 +642,7 @@ async function buildRoute(pts) {
 // ═══════════════════════════════════════════════════════════
 // STATS & ELEVATION
 // ═══════════════════════════════════════════════════════════
-const SPEED={normal:4.5,dog:3.5};
-let withDog=false, routeElevations=[], eleTimer=null;
+let withDog=false, routeElevations=[], eleTimer=null; // withDog kept for GPS compat
 
 function haversine(a,b) {
   const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lng-a.lng)*Math.PI/180;
@@ -627,7 +660,24 @@ function updateStats() {
   for (let i=1;i<waypoints.length;i++) dist+=haversine(waypoints[i-1],waypoints[i]);
   document.getElementById('statDist').textContent = dist<1?(dist*1000).toFixed(0)+' m':dist.toFixed(2)+' km';
 
-  const spd=withDog?SPEED.dog:SPEED.normal;
+  const spd = typeof baseSpeed==='function' ? baseSpeed() : 4.5;
+  if (routeElevations.length===waypoints.length && waypoints.length>1) {
+    let hrs=0,up=0,dn=0;
+    for (let i=1;i<waypoints.length;i++) {
+      const dkm=haversine(waypoints[i-1],waypoints[i]);
+      const dEle=(routeElevations[i]??0)-(routeElevations[i-1]??0);
+      const slope=dkm>0?dEle/(dkm*1000):0;
+      hrs+=dkm/Math.max(toblerSpeed(slope,spd),.5);
+      if(dEle>0)up+=dEle; else dn+=Math.abs(dEle);
+    }
+    document.getElementById('statTime').textContent=fmtMins(hrs*60);
+    document.getElementById('statUp').textContent  =up>0?'+'+Math.round(up)+'m':'0 m';
+    document.getElementById('statDown').textContent=dn>0?'-'+Math.round(dn)+'m':'0 m';
+  } else {
+    document.getElementById('statTime').textContent=fmtMins((dist/spd)*60);
+    if (waypoints.length>1){document.getElementById('statUp').textContent='…';document.getElementById('statDown').textContent='…';}
+  }
+}
   if (routeElevations.length===waypoints.length && waypoints.length>1) {
     let hrs=0,up=0,dn=0;
     for (let i=1;i<waypoints.length;i++) {
@@ -690,12 +740,26 @@ async function fetchCurrentElevation(ll) {
   } catch(e){}
 }
 
+// ── MODE & SPEED ──────────────────────────────────────────
+const SPEED = { walk:4.5, dog:3.5, run:9.0 };
+let currentMode = 'walk';
+let runSpeedKmh = 9.0;
+
 function setMode(m) {
-  withDog=m==='dog';
-  document.getElementById('btnNormal').classList.toggle('active',!withDog);
-  document.getElementById('btnDog').classList.toggle('active',withDog);
-  showToast(withDog?'🐕 Koiratila':'🚶 Kävelytila');
+  currentMode = m;
+  ['walk','dog','run'].forEach(id => document.getElementById('mode'+id.charAt(0).toUpperCase()+id.slice(1))?.classList.toggle('active', id===m));
+  document.getElementById('speedModal').classList.toggle('visible', m==='run');
   updateStats();
+  showToast({walk:'🚶 Kävelytila',dog:'🐕 Koiratila',run:'🏃 Juoksutila'}[m]);
+}
+function updateRunSpeed() {
+  runSpeedKmh = parseFloat(document.getElementById('runSpeed').value);
+  document.getElementById('runSpeedVal').textContent = runSpeedKmh.toFixed(1)+' km/h';
+  SPEED.run = runSpeedKmh;
+  updateStats();
+}
+function baseSpeed() {
+  return SPEED[currentMode] ?? 4.5;
 }
 
 // ═══════════════════════════════════════════════════════════
