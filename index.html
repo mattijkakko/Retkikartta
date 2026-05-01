@@ -656,26 +656,34 @@ async function buildRoute(pts) {
     const coords = path.points.coordinates;
     plannedRoute = coords.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll; });
 
-    clearPlannedRoute(false); // keep routeClickPts/markers during build
+    clearPlannedRoute(false);
     planLine  = L.polyline(plannedRoute, { color:'#b07d2a', weight:4, opacity:0.9, lineJoin:'round', lineCap:'round' }).addTo(map);
     routeLine = planLine;
     waypoints = plannedRoute;
     map.fitBounds(planLine.getBounds(), { padding:[30,30] });
 
+    // Show ascent/descent from GH if available
     const ascend  = Math.round(path.ascend  ?? 0);
     const descend = Math.round(path.descend ?? 0);
-    document.getElementById('statUp').textContent   = '+'+ascend+'m';
-    document.getElementById('statDown').textContent = '-'+descend+'m';
+    if (ascend > 0 || descend > 0) {
+      document.getElementById('statUp').textContent   = '+'+ascend+'m';
+      document.getElementById('statDown').textContent = '-'+descend+'m';
+    }
+
+    // Set elevation array — if GH didn't return ele, fetch from Open-Meteo
     routeElevations = plannedRoute.map(p => p.ele);
+    if (routeElevations.every(e => e === null)) {
+      fetchRouteElevation(); // async, updates stats when done
+    }
+
     updateStats();
     document.getElementById('btnExportRoute').style.display = '';
     showToast(`🧭 Reitti löydetty — ${(path.distance/1000).toFixed(2)} km`);
   } catch(err) {
-    showToast('⚠️ ' + (err.message || 'Tuntematon virhe').slice(0, 80));
+    showToast('⚠️ ' + (err.message || 'Tuntematon virhe').slice(0, 120));
     console.error('GraphHopper error:', err);
   } finally {
     document.getElementById('routingSpinner').classList.remove('visible');
-    // End routing mode
     routeClickPts = [];
     routeMarkers.forEach(m => m.remove()); routeMarkers = [];
     routing = false;
