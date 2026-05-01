@@ -606,9 +606,10 @@ function toggleDrawing() {
   showToast(drawing ? '✏️ Napauta karttaan lisätäksesi pisteitä' : 'Piirtotila pois');
 }
 
+// Single unified map click handler
 map.on('click', e => {
-  if (drawing) addWaypoint(e.latlng);
-  else if (routing) addRoutePoint(e.latlng);
+  if (drawing) { addWaypoint(e.latlng); return; }
+  if (routing)  { addRoutePoint(e.latlng); return; }
 });
 
 function addWaypoint(latlng) {
@@ -814,13 +815,6 @@ function toggleRouting() {
   }
 }
 
-// Add a routing waypoint on map click
-map.on('click', async e => {
-  if (drawing) { addWaypoint(e.latlng); return; }
-  if (!routing) return;
-  addRoutePoint(e.latlng);
-});
-
 function addRoutePoint(latlng) {
   routeClickPts.push(latlng);
   const n = routeClickPts.length;
@@ -922,9 +916,13 @@ async function closeLoop() {
 }
 
 function clearPlannedRoute(full = true) {
+  // Clear segment lines
+  segmentLines.forEach(l => map.removeLayer(l)); segmentLines = [];
   if (planLine)      { map.removeLayer(planLine);      planLine = null; }
   if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
+  if (routeLine)     { map.removeLayer(routeLine);     routeLine = null; }
   if (full) {
+    segments = [];
     waypoints = []; markers.forEach(m => m.remove()); markers = [];
     routeElevations = []; plannedRoute = [];
   }
