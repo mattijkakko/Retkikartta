@@ -294,6 +294,14 @@ backdrop-filter: blur(6px);
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
+/* ── FREEHAND DRAW ── */
+.freehand-btn.active { background: var(–blue) !important; color: #fff !important; border-color: var(–blue) !important; }
+#freehandIndicator {
+background: rgba(232,240,254,0.97) !important;
+border-color: var(–blue) !important;
+color: #1a4a9e !important;
+}
+
 /* ── PLANNED ROUTE GHOST (shown during live tracking) ── */
 .plan-ghost { stroke: #b07d2a; stroke-width: 3; stroke-dasharray: 8,6; opacity: 0.55; }
 
@@ -394,6 +402,7 @@ border-radius:var(–radius);padding:7px 6px;text-align:center;
 
   <div class="action-bar">
     <button class="act-btn primary" id="btnDraw"      onclick="toggleDrawing()">✏️ Piirrä</button>
+    <button class="act-btn freehand-btn" id="btnFreehand" onclick="toggleFreehand()">🖊️ Vapaa</button>
     <button class="act-btn"         id="btnRoute"     onclick="toggleRouting()">🧭 Reititä</button>
     <button class="act-btn"         id="btnCloseLoop" onclick="closeLoop()"    style="display:none">🔄 Ympyrä</button>
     <button class="act-btn"         id="btnConfirm"   onclick="confirmRoute()" style="display:none">✅ Valmis</button>
@@ -407,6 +416,12 @@ border-radius:var(–radius);padding:7px 6px;text-align:center;
 
   <div id="routeIndicator" class="draw-indicator" style="background:rgba(255,248,230,0.97);border-color:#c8a84b;color:#7a5c1e;">
     🧭 Napauta: 1. lähtöpiste → 2. määränpää
+  </div>
+
+  <!-- FREEHAND INDICATOR -->
+
+  <div id="freehandIndicator" class="draw-indicator" style="display:none">
+    🖊️ Piirrä sormella — vapauta lopettaaksesi
   </div>
 
   <!-- TRACKING OVERLAY -->
@@ -501,68 +516,268 @@ function changeLayer(name) {
 let waypoints=[], markers=[], routeLine=null, drawing=false, withDog=false;
 const SPEED = { normal:4.5, dog:3.5 };
 
-// ── DRAWING ───────────────────────────────────────────────
+// Segment-based route: each segment is {type:'routed'|'drawn', points:[latlng,...]}
+let segments     = [];   // all segments
+let segmentLines = [];   // corresponding Leaflet polylines
+
+function segmentColor(type) {
+  return type === 'routed' ? '#b07d2a' : '#3478f6';
+}
+function segmentDash(type) {
+  return type === 'routed' ? null : '7,5';
+}
+
+// Rebuild unified waypoints array and redraw all segment lines
+function rebuildFromSegments() {
+  // Remove old segment lines
+  segmentLines.forEach(l => map.removeLayer(l));
+  segmentLines = [];
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+
+  if (!segments.length) { waypoints = []; updateStats(); return; }
+
+  // Draw each segment as its own polyline
+  segments.forEach(seg => {
+    const line = L.polyline(seg.points, {
+      color: segmentColor(seg.type),
+      weight: 4, opacity: 0.9,
+      lineJoin: 'round', lineCap: 'round',
+      dashArray: segmentDash(seg.type)
+    }).addTo(map);
+    segmentLines.push(line);
+  });
+
+  // Flatten all points into waypoints for stats/elevation
+  waypoints = segments.flatMap(s => s.points);
+  clearTimeout(eleTimer);
+  eleTimer = setTimeout(fetchRouteElevation, 1000);
+  updateStats();
+  document.getElementById('btnExportRoute').style.display = waypoints.length > 1 ? '' : 'none';
+}
+
+// Find closest point index on existing route to a given latlng
+function closestRouteIdx(latlng) {
+  let minD = Infinity, idx = 0;
+  waypoints.forEach((p, i) => {
+    const d = haversine(latlng, p);
+    if (d < minD) { minD = d; idx = i; }
+  });
+  return idx;
+}
+
+// Replace route section between two latlngs with freehand points
+function spliceDrawnSegment(drawnPts) {
+  if (!drawnPts.length) return;
+  if (!waypoints.length) {
+    // No existing route — just add as drawn segment
+    segments = [{ type: 'drawn', points: drawnPts }];
+    rebuildFromSegments();
+    return;
+  }
+
+  const startIdx = closestRouteIdx(drawnPts[0]);
+  const endIdx   = closestRouteIdx(drawnPts[drawnPts.length - 1]);
+  const lo = Math.min(startIdx, endIdx);
+  const hi = Math.max(startIdx, endIdx);
+
+  // Rebuild flat waypoints with splice
+  const before = waypoints.slice(0, lo);
+  const after  = waypoints.slice(hi + 1);
+  const ordered = startIdx <= endIdx ? drawnPts : [...drawnPts].reverse();
+
+  // Convert back to segments: before (routed) + drawn + after (routed)
+  const newSegs = [];
+  if (before.length > 1)  newSegs.push({ type: 'routed', points: before });
+  newSegs.push({ type: 'drawn', points: ordered });
+  if (after.length > 1)   newSegs.push({ type: 'routed', points: after });
+
+  segments = newSegs;
+  rebuildFromSegments();
+  showToast(`✅ Piirretty osuus lisätty (${drawnPts.length} pistettä)`);
+}
+
+// ── POINT-BY-POINT DRAWING ────────────────────────────────
 function toggleDrawing() {
   drawing = !drawing;
+  if (freehand) toggleFreehand(); // can't have both
   document.getElementById('drawIndicator').classList.toggle('visible', drawing);
   document.getElementById('btnDraw').classList.toggle('primary', drawing);
   map.getContainer().style.cursor = drawing ? 'crosshair' : '';
   showToast(drawing ? '✏️ Napauta karttaan lisätäksesi pisteitä' : 'Piirtotila pois');
 }
 
-map.on('click', e => { if (drawing) addWaypoint(e.latlng); });
+map.on('click', e => {
+  if (drawing) addWaypoint(e.latlng);
+  else if (routing) addRoutePoint(e.latlng);
+});
 
 function addWaypoint(latlng) {
-  waypoints.push(latlng);
-  const isFirst = waypoints.length === 1;
-  const s = isFirst?18:14, a=s/2;
-  const icon = L.divIcon({ className:'', html:`<div class="wp wp-${isFirst?'start':'mid'}"></div>`, iconSize:[s,s], iconAnchor:[a,a] });
-  const m = L.marker(latlng, { icon, draggable:true }).addTo(map);
-  m.on('drag', updateRoute);
-  m.on('contextmenu', () => { const i=markers.indexOf(m); if(i!==-1){waypoints.splice(i,1);markers[i].remove();markers.splice(i,1);updateRoute();} });
-  markers.push(m);
-  updateRoute();
+  // Add as a single drawn segment extending previous
+  if (!segments.length || segments[segments.length-1].type !== 'drawn') {
+    segments.push({ type: 'drawn', points: [latlng] });
+  } else {
+    segments[segments.length-1].points.push(latlng);
+  }
+  rebuildFromSegments();
 }
 
 function undoLast() {
-  if (!waypoints.length) return;
-  waypoints.pop(); markers.pop()?.remove(); updateRoute();
+  if (!segments.length) return;
+  const last = segments[segments.length-1];
+  if (last.points.length > 1) {
+    last.points.pop();
+  } else {
+    segments.pop();
+  }
+  rebuildFromSegments();
   showToast('Viimeinen piste poistettu');
+}
+
+// ── FREEHAND DRAWING ──────────────────────────────────────
+let freehand      = false;
+let freehandPts   = [];
+let freehandLine  = null;
+let freehandActive = false; // true while finger is down
+
+function toggleFreehand() {
+  freehand = !freehand;
+  if (drawing) toggleDrawing(); // can't have both
+  document.getElementById('btnFreehand').classList.toggle('active', freehand);
+  const ind = document.getElementById('freehandIndicator');
+  ind.style.display = freehand ? 'block' : 'none';
+  map.getContainer().style.cursor = freehand ? 'crosshair' : '';
+  if (!freehand) {
+    cleanupFreehand();
+    showToast('Vapaa piirto pois');
+  } else {
+    showToast('🖊️ Piirrä sormella kartalle');
+  }
+}
+
+function cleanupFreehand() {
+  if (freehandLine) { map.removeLayer(freehandLine); freehandLine = null; }
+  freehandPts = []; freehandActive = false;
+}
+
+// Touch events for freehand on map container
+const mapEl = document.getElementById('map');
+
+mapEl.addEventListener('touchstart', e => {
+  if (!freehand) return;
+  e.preventDefault();
+  freehandActive = true;
+  freehandPts = [];
+  if (freehandLine) { map.removeLayer(freehandLine); freehandLine = null; }
+  const touch = e.touches[0];
+  const ll = map.containerPointToLatLng([touch.clientX - mapEl.getBoundingClientRect().left,
+                                          touch.clientY - mapEl.getBoundingClientRect().top]);
+  freehandPts.push(ll);
+}, { passive: false });
+
+mapEl.addEventListener('touchmove', e => {
+  if (!freehand || !freehandActive) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect  = mapEl.getBoundingClientRect();
+  const ll    = map.containerPointToLatLng([touch.clientX - rect.left, touch.clientY - rect.top]);
+  // Downsample: only add point if moved enough
+  const last = freehandPts[freehandPts.length - 1];
+  if (last && haversine(last, ll) < 0.005) return; // < ~5m
+  freehandPts.push(ll);
+  if (!freehandLine) {
+    freehandLine = L.polyline(freehandPts, { color:'#3478f6', weight:4, opacity:0.85,
+      dashArray:'7,5', lineJoin:'round', lineCap:'round' }).addTo(map);
+  } else {
+    freehandLine.setLatLngs(freehandPts);
+  }
+}, { passive: false });
+
+mapEl.addEventListener('touchend', e => {
+  if (!freehand || !freehandActive) return;
+  e.preventDefault();
+  freehandActive = false;
+  if (freehandPts.length < 3) { cleanupFreehand(); return; }
+
+  // Simplify with Ramer–Douglas–Peucker
+  const simplified = rdp(freehandPts, 0.00015);
+  spliceDrawnSegment(simplified);
+  cleanupFreehand();
+}, { passive: false });
+
+// Mouse fallback for desktop testing
+mapEl.addEventListener('mousedown', e => {
+  if (!freehand || e.button !== 0) return;
+  freehandActive = true; freehandPts = [];
+  if (freehandLine) { map.removeLayer(freehandLine); freehandLine = null; }
+  const rect = mapEl.getBoundingClientRect();
+  freehandPts.push(map.containerPointToLatLng([e.clientX-rect.left, e.clientY-rect.top]));
+});
+mapEl.addEventListener('mousemove', e => {
+  if (!freehand || !freehandActive) return;
+  const rect = mapEl.getBoundingClientRect();
+  const ll   = map.containerPointToLatLng([e.clientX-rect.left, e.clientY-rect.top]);
+  const last = freehandPts[freehandPts.length-1];
+  if (last && haversine(last, ll) < 0.005) return;
+  freehandPts.push(ll);
+  if (!freehandLine) {
+    freehandLine = L.polyline(freehandPts, {color:'#3478f6',weight:4,opacity:0.85,dashArray:'7,5',lineJoin:'round',lineCap:'round'}).addTo(map);
+  } else { freehandLine.setLatLngs(freehandPts); }
+});
+mapEl.addEventListener('mouseup', e => {
+  if (!freehand || !freehandActive) return;
+  freehandActive = false;
+  if (freehandPts.length < 3) { cleanupFreehand(); return; }
+  spliceDrawnSegment(rdp(freehandPts, 0.00015));
+  cleanupFreehand();
+});
+
+// Ramer–Douglas–Peucker line simplification
+function rdp(pts, epsilon) {
+  if (pts.length < 3) return pts;
+  let maxD = 0, idx = 0;
+  for (let i=1; i<pts.length-1; i++) {
+    const d = perpendicularDist(pts[i], pts[0], pts[pts.length-1]);
+    if (d > maxD) { maxD = d; idx = i; }
+  }
+  if (maxD > epsilon) {
+    const l = rdp(pts.slice(0, idx+1), epsilon);
+    const r = rdp(pts.slice(idx), epsilon);
+    return [...l.slice(0,-1), ...r];
+  }
+  return [pts[0], pts[pts.length-1]];
+}
+function perpendicularDist(p, a, b) {
+  const dx = b.lng-a.lng, dy = b.lat-a.lat;
+  if (dx===0 && dy===0) return haversine(p, a);
+  const t = ((p.lng-a.lng)*dx + (p.lat-a.lat)*dy) / (dx*dx+dy*dy);
+  const proj = L.latLng(a.lat+t*dy, a.lng+t*dx);
+  return haversine(p, proj);
 }
 
 function clearRoute() {
   clearTimeout(eleTimer);
-  waypoints=[]; markers.forEach(m=>m.remove()); markers=[];
-  routeElevations = [];
+  segments = []; segmentLines.forEach(l => map.removeLayer(l)); segmentLines = [];
+  markers.forEach(m=>m.remove()); markers=[];
+  waypoints=[]; routeElevations=[];
   if(routeLine){map.removeLayer(routeLine);routeLine=null;}
-  // Clear GPS track
+  if(planLine){map.removeLayer(planLine);planLine=null;}
+  clearGapFill(); hidePlanGhost();
   trackPts=[];
   if(trackLine){map.removeLayer(trackLine);trackLine=null;}
   clearTrackStorage();
-  document.getElementById('btnExportTrack').style.display = 'none';
-  document.getElementById('btnExportRoute').style.display = 'none';
-  document.getElementById('statUp').textContent   = '– m';
-  document.getElementById('statDown').textContent = '– m';
-  document.getElementById('statEle').textContent  = '– m';
+  cleanupFreehand();
+  document.getElementById('btnExportTrack').style.display='none';
+  document.getElementById('btnExportRoute').style.display='none';
+  document.getElementById('statUp').textContent='– m';
+  document.getElementById('statDown').textContent='– m';
+  document.getElementById('statEle').textContent='– m';
   updateStats();
   showToast('Kartta tyhjennetty');
 }
 
 function updateRoute() {
-  waypoints = markers.map(m => m.getLatLng());
-  if (routeLine) { map.removeLayer(routeLine); routeLine=null; }
-  markers.forEach((m,i) => {
-    const isFirst=i===0, isLast=i===markers.length-1&&markers.length>1;
-    const type=isFirst?'start':isLast?'end':'mid', s=type==='mid'?14:18, a=s/2;
-    m.setIcon(L.divIcon({className:'',html:`<div class="wp wp-${type}"></div>`,iconSize:[s,s],iconAnchor:[a,a]}));
-  });
-  if (waypoints.length > 1) {
-    routeLine = L.polyline(waypoints, { color:'#b07d2a', weight:4, opacity:0.9, lineJoin:'round', lineCap:'round' }).addTo(map);
-  }
-  // Debounce elevation fetch for manually drawn routes
-  clearTimeout(eleTimer);
-  if (waypoints.length > 0) eleTimer = setTimeout(fetchRouteElevation, 1000);
-  updateStats();
+  // Legacy: called from drag on markers — rebuild from current waypoints
+  rebuildFromSegments();
 }
 
 // ── ROUTING ───────────────────────────────────────────────
@@ -659,11 +874,10 @@ async function buildRoute(pts) {
     const coords = path.points.coordinates;
     plannedRoute = coords.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll; });
 
-    clearPlannedRoute(false);
-    planLine  = L.polyline(plannedRoute, { color:'#b07d2a', weight:4, opacity:0.9, lineJoin:'round', lineCap:'round' }).addTo(map);
-    routeLine = planLine;
-    waypoints = plannedRoute;
-    map.fitBounds(planLine.getBounds(), { padding:[30,30] });
+    // Store as routed segment
+    segments = [{ type: 'routed', points: plannedRoute }];
+    rebuildFromSegments();
+    map.fitBounds(segmentLines[0]?.getBounds() ?? map.getBounds(), { padding:[30,30] });
 
     // Show ascent/descent from GH if available
     const ascend  = Math.round(path.ascend  ?? 0);
