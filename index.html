@@ -4,6 +4,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Retkikartta">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.json">
 <title>Retkikartta</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -436,6 +441,61 @@ function setMode(m) {
   updateStats();
 }
 
+// ── SERVICE WORKER ────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+// ── WAKE LOCK ─────────────────────────────────────────────
+let wakeLock = null;
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock=null; });
+  } catch(e) {}
+}
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release(); wakeLock=null; }
+}
+// Re-acquire wake lock if page becomes visible again
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState==='visible' && tracking) requestWakeLock();
+});
+
+// ── TRACK STORAGE ─────────────────────────────────────────
+const STORAGE_KEY = 'retkikartta_track';
+
+function saveTrackToStorage() {
+  if (!trackPts.length) return;
+  const data = {
+    start: trackStart,
+    saved: Date.now(),
+    points: trackPts.map(p => [parseFloat(p.lat.toFixed(6)), parseFloat(p.lng.toFixed(6))])
+  };
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function loadTrackFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    // Only restore if saved within last 24h
+    if (Date.now() - data.saved > 86400000) { localStorage.removeItem(STORAGE_KEY); return; }
+    if (!data.points || data.points.length < 2) return;
+    trackPts   = data.points.map(p => L.latLng(p[0], p[1]));
+    trackStart = data.start;
+    trackLine  = L.polyline(trackPts, {color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
+    map.fitBounds(trackLine.getBounds(), {padding:[30,30]});
+    showToast('📂 Edellinen reitti palautettu');
+  } catch(e) {}
+}
+
+function clearTrackStorage() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+}
+
 // ── GPS ───────────────────────────────────────────────────
 let tracking=false, watchId=null, gpsMarker=null, gpsCircle=null;
 let trackLine=null, trackPts=[], trackStart=null, trackTimer=null, centerLocked=true;
@@ -459,26 +519,32 @@ function startTracking() {
   document.getElementById('trackOverlay').classList.add('visible');
   document.getElementById('centerToggle').classList.add('visible','locked');
   if(trackLine){map.removeLayer(trackLine);trackLine=null;}
+  clearTrackStorage();
+  requestWakeLock();
   watchId=navigator.geolocation.watchPosition(onGps,()=>showToast('⚠️ GPS-virhe'),{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
   trackTimer=setInterval(updateTrackTime,1000);
-  showToast('🛰️ GPS-seuranta käynnistetty');
+  showToast('🛰️ GPS-seuranta käynnistetty — näyttö pysyy päällä');
 }
 
 function stopTracking() {
   if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
   clearInterval(trackTimer); tracking=false;
+  releaseWakeLock();
+  saveTrackToStorage();
   document.getElementById('fabTrack').classList.remove('active');
   document.getElementById('fabTrack').textContent='🛰️';
   document.getElementById('trackOverlay').classList.remove('visible');
   document.getElementById('centerToggle').classList.remove('visible');
   const d=trackDistKm();
-  showToast(`⏹️ Lopetettu – ${d<1?(d*1000).toFixed(0)+' m':d.toFixed(2)+' km'}`);
+  showToast(`⏹️ Lopetettu – ${d<1?(d*1000).toFixed(0)+' m':d.toFixed(2)+' km'} – tallennettu`);
 }
 
 function onGps(pos) {
   const ll=L.latLng(pos.coords.latitude,pos.coords.longitude);
   placeGpsDot(ll,pos.coords.accuracy);
   trackPts.push(ll);
+  // Auto-save to localStorage every 10 points
+  if (trackPts.length % 10 === 0) saveTrackToStorage();
   if(trackPts.length>1){
     if(!trackLine) trackLine=L.polyline(trackPts,{color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
     else trackLine.setLatLngs(trackPts);
@@ -526,6 +592,7 @@ function showToast(msg) {
 }
 
 showToast('Tervetuloa Retkikarttaan! 🌲');
+loadTrackFromStorage();
 </script>
 
 </body>
