@@ -12,353 +12,119 @@
 <title>Retkikartta</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:       #f2f2f7;
-    --surface:  #ffffff;
-    --border:   #e0e0e5;
-    --text:     #1c1c1e;
-    --text2:    #6c6c70;
-    --green:    #347a3f;
-    --green-lt: #e8f4ea;
-    --blue:     #3478f6;
-    --blue-lt:  #e8f0fe;
-    --red:      #d32f2f;
-    --gold:     #b07d2a;
-    --radius:   12px;
-  }
+:root {
+  --bg:#f2f2f7; --surface:#fff; --border:#e0e0e5;
+  --text:#1c1c1e; --text2:#6c6c70;
+  --green:#347a3f; --green-lt:#e8f4ea;
+  --blue:#3478f6; --blue-lt:#e8f0fe;
+  --red:#d32f2f; --gold:#b07d2a; --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 
-- { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+/* HEADER */
+header{background:var(–surface);padding:12px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(–border);flex-shrink:0;z-index:1000}
+.logo{font-size:1.15rem;font-weight:600;letter-spacing:-0.02em;display:flex;align-items:center;gap:6px}
+.logo em{font-style:italic;font-weight:300;color:var(–text2)}
+.mode-toggle{display:flex;gap:6px}
+.mode-btn{background:var(–bg);border:1px solid var(–border);color:var(–text2);padding:5px 11px;border-radius:20px;font-family:inherit;font-size:.75rem;font-weight:500;cursor:pointer;transition:all .15s}
+.mode-btn.active{background:var(–green);border-color:var(–green);color:#fff}
 
-body {
-font-family: ‘Inter’, -apple-system, sans-serif;
-background: var(–bg);
-color: var(–text);
-height: 100dvh;
-display: flex;
-flex-direction: column;
-overflow: hidden;
-}
+/* MAP */
+#map{flex:1;z-index:1;min-height:0}
 
-/* ── HEADER ── */
-header {
-background: var(–surface);
-padding: 12px 16px 10px;
-display: flex;
-align-items: center;
-justify-content: space-between;
-border-bottom: 1px solid var(–border);
-flex-shrink: 0;
-z-index: 1000;
-}
-.logo {
-font-size: 1.15rem;
-font-weight: 600;
-color: var(–text);
-letter-spacing: -0.02em;
-display: flex;
-align-items: center;
-gap: 6px;
-}
-.logo em { font-style: italic; font-weight: 300; color: var(–text2); }
+/* LEAFLET */
+.leaflet-control-zoom{border:none!important;box-shadow:0 2px 8px rgba(0,0,0,.12)!important;border-radius:10px!important;overflow:hidden}
+.leaflet-control-zoom a{background:var(–surface)!important;color:var(–text)!important;border:none!important;border-bottom:1px solid var(–border)!important;font-size:1.1rem!important;line-height:32px!important;width:32px!important;height:32px!important}
+.leaflet-control-zoom-out{border-bottom:none!important}
+.leaflet-control-zoom a:hover{background:var(–bg)!important}
+.leaflet-control-attribution{display:none!important}
 
-.mode-toggle { display: flex; gap: 6px; }
-.mode-btn {
-background: var(–bg);
-border: 1px solid var(–border);
-color: var(–text2);
-padding: 5px 11px;
-border-radius: 20px;
-font-family: inherit;
-font-size: 0.75rem;
-font-weight: 500;
-cursor: pointer;
-transition: all 0.15s;
-}
-.mode-btn.active { background: var(–green); border-color: var(–green); color: #fff; }
+/* FLOAT PILL */
+.float-pill{position:absolute;z-index:500;background:rgba(255,255,255,.94);border:1px solid var(–border);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.13);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden}
+.stack-left{left:12px;bottom:175px;display:flex;flex-direction:column;gap:0}
+.stack-right{right:12px;bottom:175px}
+.ico-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;background:none;border:none;border-bottom:1px solid var(–border);cursor:pointer;transition:background .12s}
+.ico-btn:last-child{border-bottom:none}
+.ico-btn:active{background:var(–bg)}
+.ico-btn.track-on{background:var(–blue)!important}
+.layer-toggle-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;background:none;border:none;cursor:pointer}
+.layer-menu{display:none;flex-direction:column}
+.layer-menu.open{display:flex}
+.layer-menu-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;font-family:inherit;font-size:.75rem;font-weight:500;background:none;border:none;border-top:1px solid var(–border);cursor:pointer;white-space:nowrap;color:var(–text);transition:background .12s}
+.layer-menu-btn:active{background:var(–bg)}
+.layer-menu-btn.active{color:var(–green);font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(–border);flex-shrink:0}
+.layer-menu-btn.active .dot{background:var(–green)}
 
-/* ── MAP ── */
-#map { flex: 1; z-index: 1; }
+/* ACTION BAR */
+.action-bar{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:6px;z-index:500;flex-wrap:nowrap;overflow-x:auto}
+.act-btn{flex:1;min-width:60px;padding:9px 4px;border:1.5px solid var(–border);border-radius:var(–radius);background:rgba(255,255,255,.94);color:var(–text);font-family:inherit;font-size:.72rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.1);transition:background .12s;white-space:nowrap}
+.act-btn:active{background:var(–bg)}
+.act-btn.primary{background:var(–green);border-color:var(–green);color:#fff}
+.act-btn.primary:active{background:#2a6432}
+.act-btn.active-blue{background:var(–blue);border-color:var(–blue);color:#fff}
 
-/* Leaflet overrides */
-.leaflet-control-zoom {
-border: none !important;
-box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
-border-radius: 10px !important;
-overflow: hidden;
-}
-.leaflet-control-zoom a {
-background: var(–surface) !important;
-color: var(–text) !important;
-border: none !important;
-border-bottom: 1px solid var(–border) !important;
-font-size: 1.1rem !important;
-line-height: 32px !important;
-width: 32px !important;
-height: 32px !important;
-}
-.leaflet-control-zoom-out { border-bottom: none !important; }
-.leaflet-control-zoom a:hover { background: var(–bg) !important; }
-.leaflet-control-attribution { display: none !important; }
+/* OVERLAYS */
+.indicator{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);border:1px solid var(–border);border-radius:20px;padding:6px 14px;font-size:.72rem;font-weight:500;z-index:500;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.1);display:none}
+.indicator.visible{display:block}
+.indicator.route-ind{background:rgba(255,248,230,.97)!important;border-color:#c8a84b!important;color:#7a5c1e!important}
+.indicator.free-ind{background:rgba(232,240,254,.97)!important;border-color:var(–blue)!important;color:#1a4a9e!important}
 
-/* ── MAP fills everything below header ── */
-#map { flex: 1; z-index: 1; min-height: 0; }
+/* TRACK OVERLAY */
+.track-overlay{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.95);border:1px solid var(–border);border-radius:var(–radius);padding:10px 13px;font-size:.72rem;z-index:500;backdrop-filter:blur(8px);display:none;min-width:148px;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+.track-overlay.visible{display:block}
+.track-title{font-size:.65rem;font-weight:600;color:var(–blue);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.live-dot{width:7px;height:7px;background:var(–red);border-radius:50%;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+.track-row{display:flex;justify-content:space-between;gap:14px;margin-top:3px;color:var(–text2)}
+.track-row span:last-child{color:var(–text);font-weight:500}
 
-/* ── FLOATING PILL — shared base ── */
-.float-pill {
-position: absolute;
-z-index: 500;
-background: rgba(255,255,255,0.94);
-border: 1px solid var(–border);
-border-radius: 14px;
-box-shadow: 0 2px 12px rgba(0,0,0,0.13);
-backdrop-filter: blur(10px);
--webkit-backdrop-filter: blur(10px);
-overflow: hidden;
-}
+/* CENTER TOGGLE */
+.center-toggle{position:absolute;bottom:230px;left:12px;background:rgba(255,255,255,.92);border:1px solid var(–border);color:var(–blue);padding:6px 11px;border-radius:20px;font-family:inherit;font-size:.7rem;font-weight:500;z-index:500;cursor:pointer;backdrop-filter:blur(6px);box-shadow:0 1px 6px rgba(0,0,0,.1);display:none}
+.center-toggle.visible{display:block}
+.center-toggle.locked{background:var(–blue-lt)}
 
-/* ── LEFT STACK — GPS + locate + undo + clear ── */
-.stack-left {
-left: 12px;
-bottom: 160px;
-display: flex;
-flex-direction: column;
-gap: 0;
-}
-.stack-left .ico-btn {
-width: 44px; height: 44px;
-display: flex; align-items: center; justify-content: center;
-font-size: 1.15rem;
-background: none; border: none; cursor: pointer;
-border-bottom: 1px solid var(–border);
-transition: background 0.12s;
-}
-.stack-left .ico-btn:last-child { border-bottom: none; }
-.stack-left .ico-btn:active { background: var(–bg); }
-.ico-btn.track-on  { background: var(–blue) !important; font-size:1.1rem; }
-.ico-btn.track-off { background: none; }
-.ico-btn.draw-on   { background: var(–green-lt) !important; }
+/* ROUTING SPINNER */
+.routing-spinner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.95);border:1px solid var(–border);border-radius:var(–radius);padding:14px 20px;font-size:.82rem;font-weight:500;color:var(–text2);z-index:600;display:none;box-shadow:0 4px 16px rgba(0,0,0,.12);align-items:center}
+.routing-spinner.visible{display:flex}
+.spin{display:inline-block;animation:spin .8s linear infinite;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── RIGHT STACK — layer switcher (collapsed/expanded) ── */
-.stack-right {
-right: 12px;
-bottom: 160px;
-}
-.layer-toggle-btn {
-width: 44px; height: 44px;
-display: flex; align-items: center; justify-content: center;
-font-size: 1.2rem;
-background: none; border: none; cursor: pointer;
-}
-.layer-menu {
-display: none;
-flex-direction: column;
-gap: 0;
-}
-.layer-menu.open { display: flex; }
-.layer-menu-btn {
-display: flex; align-items: center; gap: 8px;
-padding: 9px 14px;
-font-family: inherit; font-size: 0.75rem; font-weight: 500;
-background: none; border: none; border-top: 1px solid var(–border);
-cursor: pointer; white-space: nowrap; color: var(–text);
-transition: background 0.12s;
-}
-.layer-menu-btn:active { background: var(–bg); }
-.layer-menu-btn.active { color: var(–green); font-weight: 600; }
-.layer-menu-btn .dot {
-width: 7px; height: 7px; border-radius: 50%;
-background: var(–border); flex-shrink: 0;
-}
-.layer-menu-btn.active .dot { background: var(–green); }
+/* TRACK LEGEND */
+.track-legend{position:absolute;bottom:75px;left:12px;background:rgba(255,255,255,.94);border:1px solid var(–border);border-radius:10px;padding:6px 10px;font-size:.68rem;font-weight:500;z-index:500;display:none;flex-direction:column;gap:4px;backdrop-filter:blur(8px)}
+.track-legend.visible{display:flex}
+.legend-row{display:flex;align-items:center;gap:6px;color:var(–text2)}
+.leg-line{width:20px;height:3px;border-radius:2px}
+.leg-gps{background:var(–blue)}
+.leg-routed{background:var(–gold)}
+.leg-drawn{background:var(–blue);border-top:2px dashed var(–blue);height:0}
 
-/* ── BOTTOM ACTION BAR — floating above stats ── */
-.action-bar {
-position: absolute;
-bottom: 12px; left: 12px; right: 12px;
-display: flex; gap: 8px;
-z-index: 500;
-}
-.act-btn {
-flex: 1;
-padding: 10px 6px;
-border: 1.5px solid var(–border);
-border-radius: var(–radius);
-background: rgba(255,255,255,0.94);
-color: var(–text);
-font-family: inherit; font-size: 0.74rem; font-weight: 500;
-cursor: pointer;
-display: flex; align-items: center; justify-content: center; gap: 4px;
-backdrop-filter: blur(10px);
--webkit-backdrop-filter: blur(10px);
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-transition: background 0.12s;
-}
-.act-btn:active { background: var(–bg); }
-.act-btn.primary { background: var(–green); border-color: var(–green); color: #fff; }
-.act-btn.primary:active { background: #2a6432; }
+/* GPS */
+.gps-dot{width:16px;height:16px;background:var(–blue);border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 0 rgba(52,120,246,.5);animation:gpsPulse 2s infinite}
+@keyframes gpsPulse{0%{box-shadow:0 0 0 0 rgba(52,120,246,.5)}70%{box-shadow:0 0 0 10px rgba(52,120,246,0)}100%{box-shadow:0 0 0 0 rgba(52,120,246,0)}}
+@keyframes tpulse{0%,100%{box-shadow:0 2px 10px rgba(211,47,47,.3)}50%{box-shadow:0 2px 18px rgba(211,47,47,.65)}}
+.ico-btn.track-on{animation:tpulse 1.5s infinite}
 
-/* ── TRACKING OVERLAY ── */
-.track-overlay {
-position: absolute; top: 12px; left: 12px;
-background: rgba(255,255,255,0.95);
-border: 1px solid var(–border);
-border-radius: var(–radius);
-padding: 10px 13px;
-font-size: 0.72rem;
-z-index: 500;
-backdrop-filter: blur(8px);
-display: none; min-width: 148px;
-box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-.track-overlay.visible { display: block; }
-.track-title {
-font-size: 0.65rem; font-weight: 600;
-color: var(–blue);
-text-transform: uppercase; letter-spacing: 0.07em;
-margin-bottom: 6px;
-display: flex; align-items: center; gap: 5px;
-}
-.live-dot { width:7px;height:7px;background:var(–red);border-radius:50%;animation:blink 1s infinite; }
-@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.15} }
-.track-row { display:flex;justify-content:space-between;gap:14px;margin-top:3px;color:var(–text2); }
-.track-row span:last-child { color:var(–text);font-weight:500; }
+/* WAYPOINTS */
+.wp{border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.3)}
+.wp-mid{width:14px;height:14px;background:var(–gold)}
+.wp-start{width:18px;height:18px;background:var(–green)}
+.wp-end{width:18px;height:18px;background:var(–red)}
 
-/* ── CENTER TOGGLE ── */
-.center-toggle {
-position: absolute; bottom: 220px; left: 12px;
-background: rgba(255,255,255,0.92);
-border: 1px solid var(–border);
-color: var(–blue);
-padding: 6px 11px; border-radius: 20px;
-font-family: inherit; font-size: 0.7rem; font-weight: 500;
-z-index: 500; cursor: pointer;
-backdrop-filter: blur(6px);
-box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-display: none;
-}
-.center-toggle.visible { display: block; }
-.center-toggle.locked  { background: var(–blue-lt); }
+/* TOAST */
+#toast{position:absolute;bottom:75px;left:50%;transform:translateX(-50%) translateY(6px);background:rgba(28,28,30,.88);color:#fff;padding:7px 16px;border-radius:20px;font-size:.78rem;font-weight:500;z-index:900;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;white-space:normal;max-width:90%;text-align:center;backdrop-filter:blur(6px)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* ── DRAW INDICATOR ── */
-.draw-indicator {
-position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-background: rgba(255,255,255,0.95);
-border: 1px solid var(–border);
-color: var(–text2);
-padding: 6px 14px; border-radius: 20px;
-font-size: 0.72rem; font-weight: 500;
-z-index: 500; white-space: nowrap; display: none;
-box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-}
-.draw-indicator.visible { display: block; }
-
-/* ── GPS DOT ── */
-.gps-dot {
-width:16px;height:16px;
-background:var(–blue);border:3px solid white;border-radius:50%;
-box-shadow:0 0 0 0 rgba(52,120,246,0.5);
-animation:gpsPulse 2s infinite;
-}
-@keyframes gpsPulse {
-0%  {box-shadow:0 0 0 0 rgba(52,120,246,0.5);}
-70% {box-shadow:0 0 0 10px rgba(52,120,246,0);}
-100%{box-shadow:0 0 0 0 rgba(52,120,246,0);}
-}
-.fab-track.active { animation: tpulse 1.5s infinite; }
-@keyframes tpulse {
-0%,100% { box-shadow: 0 2px 10px rgba(211,47,47,0.3); }
-50%      { box-shadow: 0 2px 18px rgba(211,47,47,0.65); }
-}
-
-/* Waypoints */
-.wp { border-radius:50%; border:2.5px solid white; box-shadow:0 1px 5px rgba(0,0,0,0.3); }
-.wp-mid   { width:14px;height:14px;background:#b07d2a; }
-.wp-start { width:18px;height:18px;background:var(–green); }
-.wp-end   { width:18px;height:18px;background:var(–red); }
-
-/* ── TOAST ── */
-#toast {
-position: absolute; bottom: 70px; left: 50%;
-transform: translateX(-50%) translateY(6px);
-background: rgba(28,28,30,0.88); color:#fff;
-padding: 7px 16px; border-radius: 20px;
-font-size: 0.78rem; font-weight: 500;
-z-index: 900; pointer-events: none; opacity: 0;
-transition: opacity 0.2s, transform 0.2s;
-white-space: normal; max-width: 90%; text-align: center;
-backdrop-filter: blur(6px);
-}
-#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-
-/* ── FREEHAND DRAW ── */
-.freehand-btn.active { background: var(–blue) !important; color: #fff !important; border-color: var(–blue) !important; }
-#freehandIndicator {
-background: rgba(232,240,254,0.97) !important;
-border-color: var(–blue) !important;
-color: #1a4a9e !important;
-}
-
-/* ── PLANNED ROUTE GHOST (shown during live tracking) ── */
-.plan-ghost { stroke: #b07d2a; stroke-width: 3; stroke-dasharray: 8,6; opacity: 0.55; }
-
-/* ── ROUTING SPINNER ── */
-.routing-spinner {
-position: absolute; top: 50%; left: 50%;
-transform: translate(-50%,-50%);
-background: rgba(255,255,255,0.95);
-border: 1px solid var(–border);
-border-radius: var(–radius);
-padding: 14px 20px;
-font-size: 0.82rem; font-weight: 500;
-color: var(–text2);
-z-index: 600;
-display: none;
-box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-text-align: center;
-gap: 8px;
-}
-.routing-spinner.visible { display: flex; align-items: center; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinner-icon { display:inline-block; animation: spin 0.8s linear infinite; margin-right:6px; }
-
-/* ── SEGMENT LEGEND (live track) ── */
-.track-legend {
-position: absolute; bottom: 62px; left: 12px;
-background: rgba(255,255,255,0.94);
-border: 1px solid var(–border);
-border-radius: 10px;
-padding: 6px 10px;
-font-size: 0.68rem; font-weight: 500;
-z-index: 500;
-display: none;
-flex-direction: column; gap: 4px;
-backdrop-filter: blur(8px);
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.track-legend.visible { display: flex; }
-.legend-row { display: flex; align-items: center; gap: 6px; color: var(–text2); }
-.legend-line { width: 20px; height: 3px; border-radius: 2px; flex-shrink:0; }
-.legend-line.gps   { background: #3478f6; }
-.legend-line.plan  { background: #b07d2a; border-top: 2px dashed #b07d2a; height:0; }
-.stats-panel {
-flex-shrink: 0;
-background: var(–surface);
-border-top: 1px solid var(–border);
-padding: 10px 14px 12px;
-z-index: 400;
-}
-.stats-row   { display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:6px; }
-.stats-row-2 { display:grid;grid-template-columns:repeat(3,1fr);gap:6px; }
-.stat-card {
-background:var(–bg);border:1px solid var(–border);
-border-radius:var(–radius);padding:7px 6px;text-align:center;
-}
-.stat-value { font-size:1.05rem;font-weight:600;color:var(–gold);line-height:1;margin-bottom:2px; }
-.stat-label { font-size:0.58rem;font-weight:500;color:var(–text2);text-transform:uppercase;letter-spacing:0.06em; }
+/* STATS */
+.stats-panel{flex-shrink:0;background:var(–surface);border-top:1px solid var(–border);padding:10px 14px 12px;z-index:400}
+.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:6px}
+.stats-row-2{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stat-card{background:var(–bg);border:1px solid var(–border);border-radius:var(–radius);padding:7px 6px;text-align:center}
+.stat-value{font-size:1.05rem;font-weight:600;color:var(–gold);line-height:1;margin-bottom:2px}
+.stat-label{font-size:.58rem;font-weight:500;color:var(–text2);text-transform:uppercase;letter-spacing:.06em}
 </style>
 
 </head>
@@ -372,59 +138,53 @@ border-radius:var(–radius);padding:7px 6px;text-align:center;
   </div>
 </header>
 
-<div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden;">
+<div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden">
   <div id="map"></div>
 
-  <!-- LEFT STACK: GPS controls -->
+  <!-- LEFT: GPS controls -->
 
   <div class="float-pill stack-left">
-    <button class="ico-btn track-off" id="fabTrack" onclick="toggleTracking()" title="GPS-seuranta">🛰️</button>
-    <button class="ico-btn" onclick="locateOnce()" title="Sijaintini">📍</button>
-    <button class="ico-btn" onclick="undoLast()" title="Kumoa">↩️</button>
-    <button class="ico-btn" onclick="clearRoute()" title="Tyhjennä" style="color:var(--red)">🗑️</button>
+    <button class="ico-btn track-off" id="fabTrack" onclick="toggleTracking()">🛰️</button>
+    <button class="ico-btn" onclick="locateOnce()">📍</button>
+    <button class="ico-btn" onclick="undoLast()">↩️</button>
+    <button class="ico-btn" onclick="clearAll()" style="color:var(--red)">🗑️</button>
   </div>
 
-  <!-- RIGHT STACK: Layer switcher -->
+  <!-- RIGHT: Layer switcher -->
 
   <div class="float-pill stack-right">
-    <button class="layer-toggle-btn" onclick="toggleLayerMenu()" title="Karttapohja">🗺️</button>
+    <button class="layer-toggle-btn" onclick="toggleLayerMenu()">🗺️</button>
     <div class="layer-menu" id="layerMenu">
-      <button class="layer-menu-btn active" id="lbtn-osm"       onclick="changeLayer('osm')">       <span class="dot"></span>OpenStreetMap</button>
-      <button class="layer-menu-btn"        id="lbtn-mml"       onclick="changeLayer('mml')">       <span class="dot"></span>MML Maasto</button>
-      <button class="layer-menu-btn"        id="lbtn-topo"      onclick="changeLayer('topo')">      <span class="dot"></span>Topokartta</button>
-      <button class="layer-menu-btn"        id="lbtn-satellite" onclick="changeLayer('satellite')"> <span class="dot"></span>Satelliitti</button>
-      <button class="layer-menu-btn"        id="lbtn-ortho"     onclick="changeLayer('ortho')">     <span class="dot"></span>MML Ilmakuva</button>
-      <button class="layer-menu-btn"        id="lbtn-hiking"    onclick="changeLayer('hiking')">    <span class="dot"></span>+ Reitit</button>
+      <button class="layer-menu-btn active" id="lbtn-osm"       onclick="setLayer('osm')"><span class="dot"></span>OpenStreetMap</button>
+      <button class="layer-menu-btn"        id="lbtn-mml"       onclick="setLayer('mml')"><span class="dot"></span>MML Maasto</button>
+      <button class="layer-menu-btn"        id="lbtn-topo"      onclick="setLayer('topo')"><span class="dot"></span>Topokartta</button>
+      <button class="layer-menu-btn"        id="lbtn-satellite" onclick="setLayer('satellite')"><span class="dot"></span>Satelliitti</button>
+      <button class="layer-menu-btn"        id="lbtn-ortho"     onclick="setLayer('ortho')"><span class="dot"></span>MML Ilmakuva</button>
+      <button class="layer-menu-btn"        id="lbtn-hiking"    onclick="setLayer('hiking')"><span class="dot"></span>+ Reitit</button>
     </div>
   </div>
 
-  <!-- BOTTOM ACTION BAR -->
+  <!-- ACTION BAR -->
 
   <div class="action-bar">
     <button class="act-btn primary" id="btnDraw"      onclick="toggleDrawing()">✏️ Piirrä</button>
-    <button class="act-btn freehand-btn" id="btnFreehand" onclick="toggleFreehand()">🖊️ Vapaa</button>
+    <button class="act-btn"         id="btnFreehand"  onclick="toggleFreehand()">🖊️ Vapaa</button>
     <button class="act-btn"         id="btnRoute"     onclick="toggleRouting()">🧭 Reititä</button>
-    <button class="act-btn"         id="btnCloseLoop" onclick="closeLoop()"    style="display:none">🔄 Ympyrä</button>
-    <button class="act-btn"         id="btnConfirm"   onclick="confirmRoute()" style="display:none">✅ Valmis</button>
+    <button class="act-btn"         id="btnCloseLoop" onclick="closeLoop()"     style="display:none">🔄 Ympyrä</button>
+    <button class="act-btn"         id="btnConfirm"   onclick="confirmRoute()"  style="display:none">✅ Valmis</button>
     <button class="act-btn" onclick="document.getElementById('gpxInput').click()">📂 GPX</button>
-    <button class="act-btn" onclick="exportGPX('track')" id="btnExportTrack" style="display:none">⬇️ Tallenne</button>
-    <button class="act-btn" onclick="exportGPX('route')" id="btnExportRoute" style="display:none">⬇️ Reitti</button>
+    <button class="act-btn" id="btnExportTrack" onclick="exportGPX('track')" style="display:none">⬇️ Tallenne</button>
+    <button class="act-btn" id="btnExportRoute" onclick="exportGPX('route')" style="display:none">⬇️ Reitti</button>
   </div>
-  <input type="file" id="gpxInput" accept=".gpx,.xml,application/gpx+xml,application/xml,text/xml,*/*" style="display:none" onchange="importGPX(event)">
+  <input type="file" id="gpxInput" accept=".gpx,.xml,*/*" style="display:none" onchange="importGPX(event)">
 
-  <!-- ROUTING INDICATOR -->
+  <!-- INDICATORS -->
 
-  <div id="routeIndicator" class="draw-indicator" style="background:rgba(255,248,230,0.97);border-color:#c8a84b;color:#7a5c1e;">
-    🧭 Napauta: 1. lähtöpiste → 2. määränpää
-  </div>
+  <div id="drawInd"   class="indicator">✏️ Napauta karttaan lisätäksesi pisteitä</div>
+  <div id="freeInd"   class="indicator free-ind">🖊️ Piirrä sormella — vapauta lopettaaksesi</div>
+  <div id="routeInd"  class="indicator route-ind">🧭 Napauta lähtöpiste kartalle</div>
 
-  <!-- FREEHAND INDICATOR -->
-
-  <div id="freehandIndicator" class="draw-indicator" style="display:none">
-    🖊️ Piirrä sormella — vapauta lopettaaksesi
-  </div>
-
-  <!-- TRACKING OVERLAY -->
+  <!-- TRACK OVERLAY -->
 
   <div id="trackOverlay" class="track-overlay">
     <div class="track-title"><div class="live-dot"></div> Live-seuranta</div>
@@ -436,16 +196,14 @@ border-radius:var(–radius);padding:7px 6px;text-align:center;
 
 <button id="centerToggle" class="center-toggle locked" onclick="toggleCenter()">🔒 Seuraa sijaintia</button>
 
-  <div id="drawIndicator"  class="draw-indicator">✏️ Napauta karttaan lisätäksesi pisteitä</div>
-  <div id="routingSpinner" class="routing-spinner"><span class="spinner-icon">⏳</span> Haetaan reittiä…</div>
-  <div id="trackLegend"    class="track-legend">
-    <div class="legend-row"><div class="legend-line gps"></div>GPS-seuranta</div>
-    <div class="legend-row"><div class="legend-line plan"></div>Suunnitelma</div>
+  <div id="routingSpinner" class="routing-spinner"><span class="spin">⏳</span> Haetaan reittiä…</div>
+  <div id="trackLegend" class="track-legend">
+    <div class="legend-row"><div class="leg-line leg-gps"></div>GPS-jälki</div>
+    <div class="legend-row"><div class="leg-line leg-routed"></div>Reititetty</div>
+    <div class="legend-row"><div class="leg-line leg-drawn"></div>Piirretty</div>
   </div>
   <div id="toast"></div>
 </div>
-
-<!-- STATS PANEL -->
 
 <div class="stats-panel">
   <div class="stats-row">
@@ -460,1114 +218,646 @@ border-radius:var(–radius);padding:7px 6px;text-align:center;
 </div>
 
 <script>
-// ── MAP ───────────────────────────────────────────────────
-const map = L.map('map', {
-  center: [62.5, 25.7], zoom: 6,
-  zoomControl: true, attributionControl: false
-});
+// ═══════════════════════════════════════════════════════════
+// MAP INIT
+// ═══════════════════════════════════════════════════════════
+const map = L.map('map', { center:[62.5,25.7], zoom:6, zoomControl:true, attributionControl:false });
 
 const MML_KEY  = '113f9471-0872-42fa-9fe7-cbedae6572b8';
 const MML_BASE = 'https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0';
+const GH_KEY   = 'e379a544-f2a3-4ad2-93c0-a2b43ce9047a';
 
-const tileLayers = {
-  osm:       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, subdomains:'abc' }),
-  mml:       L.tileLayer(MML_BASE+'/maastokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key='+MML_KEY, { maxZoom:18 }),
-  topo:      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom:17, subdomains:'abc' }),
-  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom:19 }),
-  ortho:     L.tileLayer(MML_BASE+'/ortokuva/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key='+MML_KEY, { maxZoom:19 }),
-  hiking:    L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom:19, opacity:0.8 })
+const LAYERS = {
+  osm:       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,subdomains:'abc'}),
+  mml:       L.tileLayer(MML_BASE+'/maastokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key='+MML_KEY,{maxZoom:18}),
+  topo:      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,subdomains:'abc'}),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}),
+  ortho:     L.tileLayer(MML_BASE+'/ortokuva/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key='+MML_KEY,{maxZoom:19}),
+  hiking:    L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',{maxZoom:19,opacity:.8})
 };
-
 const BASE_LAYERS = ['osm','mml','topo','satellite','ortho'];
-let activeBase = 'osm', hikeVisible = false;
-tileLayers.osm.addTo(map);
+let activeBase = 'osm', hikeOn = false;
+LAYERS.osm.addTo(map);
 
 let layerMenuOpen = false;
 function toggleLayerMenu() {
   layerMenuOpen = !layerMenuOpen;
   document.getElementById('layerMenu').classList.toggle('open', layerMenuOpen);
 }
-
-function changeLayer(name) {
-  // Close menu after selection (except hiking toggle)
-  if (name !== 'hiking') {
-    layerMenuOpen = false;
-    document.getElementById('layerMenu').classList.remove('open');
-  }
+function setLayer(name) {
   if (name === 'hiking') {
-    hikeVisible = !hikeVisible;
-    hikeVisible ? tileLayers.hiking.addTo(map) : map.removeLayer(tileLayers.hiking);
-    if (hikeVisible) tileLayers.hiking.bringToFront();
-    document.getElementById('lbtn-hiking').classList.toggle('active', hikeVisible);
-    showToast(hikeVisible ? '🥾 Reittikorostus päällä' : '🥾 Reittikorostus pois');
+    hikeOn = !hikeOn;
+    hikeOn ? LAYERS.hiking.addTo(map) : map.removeLayer(LAYERS.hiking);
+    if (hikeOn) LAYERS.hiking.bringToFront();
+    document.getElementById('lbtn-hiking').classList.toggle('active', hikeOn);
+    showToast(hikeOn ? '🥾 Reittikorostus päällä' : '🥾 Reittikorostus pois');
     return;
   }
-  if (!BASE_LAYERS.includes(name)) return;
-  map.removeLayer(tileLayers[activeBase]);
-  tileLayers[name].addTo(map);
-  if (hikeVisible) tileLayers.hiking.bringToFront();
+  map.removeLayer(LAYERS[activeBase]);
+  LAYERS[name].addTo(map);
+  if (hikeOn) LAYERS.hiking.bringToFront();
   activeBase = name;
   BASE_LAYERS.forEach(l => document.getElementById('lbtn-'+l).classList.toggle('active', l===name));
-  const labels = { osm:'🗺️ OpenStreetMap', mml:'🇫🇮 MML Maastokartta', topo:'🏔️ Topokartta', satellite:'🛸 Satelliitti', ortho:'📷 MML Ortoilmakuva' };
-  showToast(labels[name]);
+  layerMenuOpen = false;
+  document.getElementById('layerMenu').classList.remove('open');
+  showToast({osm:'🗺️ OpenStreetMap',mml:'🇫🇮 MML Maastokartta',topo:'🏔️ Topokartta',satellite:'🛸 Satelliitti',ortho:'📷 MML Ortoilmakuva'}[name]);
 }
 
-// ── STATE ─────────────────────────────────────────────────
-let waypoints     = [];    // flat array of all route latlngs
-let waypointTypes = [];    // 'routed'|'drawn' per waypoint
-let segmentLines  = [];    // rendered Leaflet polylines
-let markers       = [];
-let routeLine     = null;
-let drawing       = false;
-let withDog       = false;
-const SPEED       = { normal:4.5, dog:3.5 };
+// ═══════════════════════════════════════════════════════════
+// ROUTE STATE  (flat arrays — single source of truth)
+// ═══════════════════════════════════════════════════════════
+// waypoints[i]     = L.latLng
+// wpTypes[i]       = 'routed' | 'drawn'
+// segLines         = rendered Leaflet polylines (rebuilt on demand)
+let waypoints = [], wpTypes = [], segLines = [];
 
-// ── ACTION HISTORY ─────────────────────────────────────────
-let actionHistory = [];
-function saveHistory() {
-  actionHistory.push({
-    wp:  waypoints.map(p => L.latLng(p.lat, p.lng)),
-    wt:  [...waypointTypes]
-  });
-  if (actionHistory.length > 30) actionHistory.shift();
+// History for undo
+let history = [];
+function saveState() {
+  history.push({ wp: waypoints.map(p=>L.latLng(p.lat,p.lng)), wt: [...wpTypes] });
+  if (history.length > 40) history.shift();
 }
 function undoLast() {
-  if (!actionHistory.length) { showToast('Ei kumottavaa'); return; }
-  const s = actionHistory.pop();
-  waypoints = s.wp; waypointTypes = s.wt;
-  rebuildPolylines();
+  if (!history.length) { showToast('Ei kumottavaa'); return; }
+  const s = history.pop();
+  waypoints = s.wp; wpTypes = s.wt;
+  redraw();
   showToast('↩️ Kumottu');
 }
 
-// ── REBUILD POLYLINES ──────────────────────────────────────
-function rebuildPolylines() {
-  segmentLines.forEach(l => { try { map.removeLayer(l); } catch(e){} });
-  segmentLines = [];
-  if (routeLine) { try { map.removeLayer(routeLine); } catch(e){} routeLine = null; }
+// Remove all route polylines from map and rebuild from waypoints+wpTypes
+function redraw() {
+  segLines.forEach(l => map.removeLayer(l));
+  segLines = [];
   if (waypoints.length < 2) { updateStats(); return; }
 
+  // Group consecutive same-type points into segments
   let i = 0;
   while (i < waypoints.length - 1) {
-    const type = waypointTypes[i] || 'drawn';
+    const type = wpTypes[i] || 'drawn';
     let j = i + 1;
-    while (j < waypoints.length && (waypointTypes[j] || 'drawn') === type) j++;
-    // Include one overlap point so segments connect
-    const pts = waypoints.slice(i, Math.min(j + 1, waypoints.length));
+    while (j < waypoints.length && (wpTypes[j]||'drawn') === type) j++;
+    // Slice with one overlap so segments connect visually
+    const pts = waypoints.slice(i, j < waypoints.length ? j + 1 : j);
     if (pts.length > 1) {
-      const line = L.polyline(pts, {
+      segLines.push(L.polyline(pts, {
         color:     type === 'routed' ? '#b07d2a' : '#3478f6',
-        weight: 4, opacity: 0.9,
+        weight: 4, opacity: .9,
         lineJoin: 'round', lineCap: 'round',
         dashArray: type === 'routed' ? null : '7,5'
-      }).addTo(map);
-      segmentLines.push(line);
+      }).addTo(map));
     }
     i = j;
   }
-
-  clearTimeout(eleTimer);
-  eleTimer = setTimeout(fetchRouteElevation, 1200);
-  updateStats();
   document.getElementById('btnExportRoute').style.display = waypoints.length > 1 ? '' : 'none';
+  updateStats();
+  scheduleElevation();
 }
-function updateRoute() { rebuildPolylines(); }
 
-// ── DRAWING (point-by-point) ───────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// CLEAR ALL
+// ═══════════════════════════════════════════════════════════
+let gpsMarker=null, gpsCircle=null, trackLine=null, freehandLine=null;
+let planGhostLine=null, gapFillLine=null;
+
+function removeLayer(l) { if (l) try { map.removeLayer(l); } catch(e){} return null; }
+
+function clearAll() {
+  // Stop any active modes
+  if (drawing)  { drawing=false;  document.getElementById('drawInd').classList.remove('visible');  document.getElementById('btnDraw').classList.remove('primary'); }
+  if (freehand) { freehand=false; document.getElementById('freeInd').classList.remove('visible');  document.getElementById('btnFreehand').classList.remove('active-blue'); map.dragging.enable(); }
+  if (routing)  { routing=false;  document.getElementById('routeInd').classList.remove('visible'); document.getElementById('btnRoute').classList.remove('primary'); routeMarkers.forEach(m=>removeLayer(m)); routeMarkers=[]; routeClickPts=[]; }
+  map.getContainer().style.cursor = '';
+
+  // Clear route lines
+  segLines.forEach(l => removeLayer(l)); segLines = [];
+  gpsMarker    = removeLayer(gpsMarker);
+  gpsCircle    = removeLayer(gpsCircle);
+  trackLine    = removeLayer(trackLine);
+  freehandLine = removeLayer(freehandLine);
+  planGhostLine= removeLayer(planGhostLine);
+  gapFillLine  = removeLayer(gapFillLine);
+
+  // Reset data
+  waypoints=[]; wpTypes=[]; history=[];
+  routeElevations=[]; plannedRoute=[];
+  trackPts=[];
+  freehandPts=[]; freehandActive=false;
+  clearTrackStorage();
+
+  // UI
+  document.getElementById('btnExportTrack').style.display='none';
+  document.getElementById('btnExportRoute').style.display='none';
+  document.getElementById('trackLegend').classList.remove('visible');
+  document.getElementById('btnCloseLoop').style.display='none';
+  document.getElementById('btnConfirm').style.display='none';
+  ['statDist','statTime'].forEach(id=>document.getElementById(id).textContent='0');
+  ['statUp','statDown','statEle'].forEach(id=>document.getElementById(id).textContent='– m');
+  showToast('Kartta tyhjennetty');
+}
+
+// ═══════════════════════════════════════════════════════════
+// POINT-BY-POINT DRAWING
+// ═══════════════════════════════════════════════════════════
+let drawing = false;
 function toggleDrawing() {
   drawing = !drawing;
-  if (freehand) toggleFreehand();
-  document.getElementById('drawIndicator').classList.toggle('visible', drawing);
+  if (drawing && freehand) toggleFreehand();
+  if (drawing && routing)  cancelRouting();
+  document.getElementById('drawInd').classList.toggle('visible', drawing);
   document.getElementById('btnDraw').classList.toggle('primary', drawing);
   map.getContainer().style.cursor = drawing ? 'crosshair' : '';
-  showToast(drawing ? '✏️ Napauta karttaan lisätäksesi pisteitä' : 'Piirtotila pois');
+  showToast(drawing ? '✏️ Napauta karttaan' : 'Piirtotila pois');
 }
 
 map.on('click', e => {
-  if (drawing) addWaypoint(e.latlng);
-  else if (routing) addRoutePoint(e.latlng);
+  if (drawing)  { addPoint(e.latlng, 'drawn'); return; }
+  if (routing)  { addRoutePoint(e.latlng); }
 });
 
-function addWaypoint(latlng) {
-  saveHistory();
+function addPoint(latlng, type) {
+  saveState();
   waypoints.push(latlng);
-  waypointTypes.push('drawn');
-  rebuildPolylines();
+  wpTypes.push(type);
+  redraw();
 }
 
-// ── FREEHAND SPLICE ────────────────────────────────────────
-function closestRouteIdx(latlng) {
-  let minD = Infinity, idx = 0;
-  waypoints.forEach((p, i) => {
-    const d = haversine(latlng, p);
-    if (d < minD) { minD = d; idx = i; }
-  });
-  return idx;
-}
-
-function spliceDrawnSegment(drawnPts) {
-  if (!drawnPts.length) return;
-  saveHistory();
-
-  if (!waypoints.length) {
-    waypoints     = drawnPts;
-    waypointTypes = drawnPts.map(() => 'drawn');
-    rebuildPolylines();
-    return;
-  }
-
-  const si = closestRouteIdx(drawnPts[0]);
-  const ei = closestRouteIdx(drawnPts[drawnPts.length - 1]);
-  const lo = Math.min(si, ei);
-  const hi = Math.max(si, ei);
-  const ordered = si <= ei ? drawnPts : [...drawnPts].reverse();
-
-  waypoints     = [...waypoints.slice(0, lo + 1), ...ordered, ...waypoints.slice(hi)];
-  waypointTypes = [...waypointTypes.slice(0, lo + 1), ...ordered.map(() => 'drawn'), ...waypointTypes.slice(hi)];
-
-  rebuildPolylines();
-  showToast('✅ Piirretty osuus lisätty');
-}
-
-// ── CLEAR ALL ─────────────────────────────────────────────
-function clearRoute() {
-  clearTimeout(eleTimer);
-  actionHistory = [];
-
-  segmentLines.forEach(l => { try { map.removeLayer(l); } catch(e){} }); segmentLines = [];
-  [routeLine,planLine,planGhostLine,gapFillLine,trackLine,freehandLine,gpsMarker,gpsCircle].forEach(l => {
-    if (l) try { map.removeLayer(l); } catch(e){}
-  });
-  routeLine=null; planLine=null; planGhostLine=null; gapFillLine=null;
-  trackLine=null; freehandLine=null; gpsMarker=null; gpsCircle=null;
-
-  markers.forEach(m => { try { map.removeLayer(m); } catch(e){} });      markers=[];
-  routeMarkers.forEach(m => { try { map.removeLayer(m); } catch(e){} }); routeMarkers=[];
-
-  waypoints=[]; waypointTypes=[]; routeElevations=[];
-  plannedRoute=[]; trackPts=[]; freehandPts=[]; freehandActive=false;
-  clearTrackStorage();
-
-  document.getElementById('btnExportTrack').style.display='none';
-  document.getElementById('btnExportRoute').style.display='none';
-  document.getElementById('statUp').textContent   ='– m';
-  document.getElementById('statDown').textContent ='– m';
-  document.getElementById('statEle').textContent  ='– m';
-  document.getElementById('statDist').textContent ='0 km';
-  document.getElementById('statTime').textContent ='0 min';
-  showToast('Kartta tyhjennetty');
-}
-
-// ── FREEHAND DRAWING ──────────────────────────────────────
-let freehand       = false;
-let freehandPts    = [];
-let freehandLine   = null;
-let freehandActive = false;
+// ═══════════════════════════════════════════════════════════
+// FREEHAND DRAWING
+// ═══════════════════════════════════════════════════════════
+let freehand=false, freehandPts=[], freehandActive=false, freehandStarted=false;
 
 function toggleFreehand() {
   freehand = !freehand;
-  if (drawing) toggleDrawing();
-  document.getElementById('btnFreehand').classList.toggle('active', freehand);
-  const ind = document.getElementById('freehandIndicator');
-  ind.style.display = freehand ? 'block' : 'none';
-  if (!freehand) {
-    map.dragging.enable();
-    map.getContainer().style.cursor = '';
-    cleanupFreehand();
-    showToast('Vapaa piirto pois');
-  } else {
-    showToast('🖊️ Piirrä sormella kartalle');
-  }
+  if (freehand && drawing)  toggleDrawing();
+  if (freehand && routing)  cancelRouting();
+  document.getElementById('freeInd').classList.toggle('visible', freehand);
+  document.getElementById('btnFreehand').classList.toggle('active-blue', freehand);
+  if (!freehand) { map.dragging.enable(); map.getContainer().style.cursor=''; cleanFreehand(); showToast('Vapaa piirto pois'); }
+  else showToast('🖊️ Piirrä sormella kartalle');
 }
 
-function cleanupFreehand() {
-  if (freehandLine) { map.removeLayer(freehandLine); freehandLine = null; }
-  freehandPts = []; freehandActive = false;
+function cleanFreehand() {
+  freehandLine = removeLayer(freehandLine);
+  freehandPts=[]; freehandActive=false; freehandStarted=false;
 }
 
-// Touch events for freehand on map container
-const mapEl = document.getElementById('map');
-let freehandStarted = false; // only true after meaningful movement
+// Find index of closest existing waypoint to latlng
+function closestIdx(latlng) {
+  let best=0, bestD=Infinity;
+  waypoints.forEach((p,i)=>{ const d=haversine(latlng,p); if(d<bestD){bestD=d;best=i;} });
+  return best;
+}
 
-mapEl.addEventListener('touchstart', e => {
-  if (!freehand) return;
-  e.preventDefault();
-  map.dragging.disable(); // prevent map pan while drawing
-  freehandActive  = true;
-  freehandStarted = false;
-  freehandPts     = [];
-  if (freehandLine) { map.removeLayer(freehandLine); freehandLine = null; }
-  const touch = e.touches[0];
-  const rect  = mapEl.getBoundingClientRect();
-  const ll    = map.containerPointToLatLng([touch.clientX - rect.left, touch.clientY - rect.top]);
-  freehandPts.push(ll);
-}, { passive: false });
+// Splice freehand stroke into waypoints
+function spliceFreehand(pts) {
+  if (pts.length < 2) return;
+  saveState();
 
-mapEl.addEventListener('touchmove', e => {
-  if (!freehand || !freehandActive) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  const rect  = mapEl.getBoundingClientRect();
-  const x = touch.clientX - rect.left;
-  const y = touch.clientY - rect.top;
-  const ll = map.containerPointToLatLng([x, y]);
-  const last = freehandPts[freehandPts.length - 1];
-  if (last && haversine(last, ll) < 0.015) return;
-  freehandPts.push(ll);
-  freehandStarted = freehandPts.length >= 4;
-  if (!freehandStarted) return;
-  if (!freehandLine) {
-    freehandLine = L.polyline(freehandPts, { color:'#3478f6', weight:4, opacity:0.85,
-      dashArray:'7,5', lineJoin:'round', lineCap:'round' }).addTo(map);
-  } else {
-    freehandLine.setLatLngs(freehandPts);
+  if (!waypoints.length) {
+    waypoints = pts;
+    wpTypes   = pts.map(()=>'drawn');
+    redraw();
+    showToast('✅ Vapaa reitti lisätty');
+    return;
   }
-  // Auto-pan when finger near edge (within 40px)
-  const edge = 40;
-  let dx = 0, dy = 0;
-  if (x < edge) dx = -(edge - x);
-  else if (x > rect.width - edge) dx = (edge - (rect.width - x));
-  if (y < edge) dy = -(edge - y);
-  else if (y > rect.height - edge) dy = (edge - (rect.height - y));
-  if (dx !== 0 || dy !== 0) map.panBy([dx, dy], { animate: false });
-}, { passive: false });
 
-mapEl.addEventListener('touchend', e => {
-  if (!freehand || !freehandActive) return;
-  e.preventDefault();
-  freehandActive = false;
-  map.dragging.enable(); // restore map pan
+  const si = closestIdx(pts[0]);
+  const ei = closestIdx(pts[pts.length-1]);
+  const lo = Math.min(si,ei);
+  const hi = Math.max(si,ei);
+  const ordered = si<=ei ? pts : [...pts].reverse();
 
-  if (freehandPts.length < 5 || !freehandStarted) { cleanupFreehand(); return; }
-  let totalDist = 0;
-  for (let i=1; i<freehandPts.length; i++) totalDist += haversine(freehandPts[i-1], freehandPts[i]);
-  if (totalDist < 0.03) { cleanupFreehand(); return; }
+  // Keep everything before lo (inclusive) + drawn stroke + everything from hi (inclusive)
+  waypoints = [...waypoints.slice(0, lo+1), ...ordered, ...waypoints.slice(hi)];
+  wpTypes   = [...wpTypes.slice(0, lo+1),   ...ordered.map(()=>'drawn'), ...wpTypes.slice(hi)];
 
-  const simplified = rdp(freehandPts, 0.0003);
-  if (simplified.length < 2) { cleanupFreehand(); return; }
-  pushHistory('freehand', JSON.parse(JSON.stringify(segments.map(s => ({type:s.type, points:s.points.map(p=>({lat:p.lat,lng:p.lng}))})))));
-  spliceDrawnSegment(simplified);
-  cleanupFreehand();
-}, { passive: false });
+  redraw();
+  showToast('✅ Osuus korvattu');
+}
 
-// Mouse fallback for desktop testing
-mapEl.addEventListener('mousedown', e => {
-  if (!freehand || e.button !== 0) return;
-  freehandActive = true; freehandStarted = false; freehandPts = [];
-  if (freehandLine) { map.removeLayer(freehandLine); freehandLine = null; }
-  const rect = mapEl.getBoundingClientRect();
-  freehandPts.push(map.containerPointToLatLng([e.clientX-rect.left, e.clientY-rect.top]));
-});
-mapEl.addEventListener('mousemove', e => {
-  if (!freehand || !freehandActive) return;
-  const rect = mapEl.getBoundingClientRect();
-  const ll   = map.containerPointToLatLng([e.clientX-rect.left, e.clientY-rect.top]);
-  const last = freehandPts[freehandPts.length-1];
-  if (last && haversine(last, ll) < 0.015) return;
-  freehandPts.push(ll);
-  freehandStarted = freehandPts.length >= 4;
-  if (!freehandStarted) return;
-  if (!freehandLine) {
-    freehandLine = L.polyline(freehandPts, {color:'#3478f6',weight:4,opacity:0.85,dashArray:'7,5',lineJoin:'round',lineCap:'round'}).addTo(map);
-  } else { freehandLine.setLatLngs(freehandPts); }
-});
-mapEl.addEventListener('mouseup', e => {
-  if (!freehand || !freehandActive) return;
-  freehandActive = false;
-  if (freehandPts.length < 5 || !freehandStarted) { cleanupFreehand(); return; }
-  let totalDist = 0;
-  for (let i=1; i<freehandPts.length; i++) totalDist += haversine(freehandPts[i-1], freehandPts[i]);
-  if (totalDist < 0.03) { cleanupFreehand(); return; }
-  pushHistory('freehand', JSON.parse(JSON.stringify(segments.map(s => ({type:s.type, points:s.points.map(p=>({lat:p.lat,lng:p.lng}))})))));
-  spliceDrawnSegment(rdp(freehandPts, 0.0003));
-  cleanupFreehand();
-});
-
-// Ramer–Douglas–Peucker line simplification
-function rdp(pts, epsilon) {
+// RDP simplification
+function rdp(pts, eps) {
   if (pts.length < 3) return pts;
-  let maxD = 0, idx = 0;
-  for (let i=1; i<pts.length-1; i++) {
-    const d = perpendicularDist(pts[i], pts[0], pts[pts.length-1]);
-    if (d > maxD) { maxD = d; idx = i; }
+  let maxD=0, idx=0;
+  for (let i=1;i<pts.length-1;i++) {
+    const d = ptLineDist(pts[i], pts[0], pts[pts.length-1]);
+    if (d>maxD){maxD=d;idx=i;}
   }
-  if (maxD > epsilon) {
-    const l = rdp(pts.slice(0, idx+1), epsilon);
-    const r = rdp(pts.slice(idx), epsilon);
-    return [...l.slice(0,-1), ...r];
-  }
+  if (maxD>eps) return [...rdp(pts.slice(0,idx+1),eps).slice(0,-1), ...rdp(pts.slice(idx),eps)];
   return [pts[0], pts[pts.length-1]];
 }
-function perpendicularDist(p, a, b) {
-  const dx = b.lng-a.lng, dy = b.lat-a.lat;
-  if (dx===0 && dy===0) return haversine(p, a);
-  const t = ((p.lng-a.lng)*dx + (p.lat-a.lat)*dy) / (dx*dx+dy*dy);
-  const proj = L.latLng(a.lat+t*dy, a.lng+t*dx);
-  return haversine(p, proj);
+function ptLineDist(p, a, b) {
+  const dx=b.lng-a.lng, dy=b.lat-a.lat;
+  if (!dx&&!dy) return haversine(p,a);
+  const t=((p.lng-a.lng)*dx+(p.lat-a.lat)*dy)/(dx*dx+dy*dy);
+  return haversine(p, L.latLng(a.lat+t*dy, a.lng+t*dx));
 }
 
-// ── ROUTING ───────────────────────────────────────────────
-const GH_KEY = 'e379a544-f2a3-4ad2-93c0-a2b43ce9047a';
-let routing       = false;
-let routeClickPts = [];   // latlngs tapped by user
-let routeMarkers  = [];   // markers shown during routing
-let plannedRoute  = [];   // final routed latlngs
-let planLine      = null;
-let planGhostLine = null;
+const mapEl = document.getElementById('map');
+
+function fhStart(x, y) {
+  map.dragging.disable();
+  freehandActive=true; freehandStarted=false; freehandPts=[];
+  freehandLine = removeLayer(freehandLine);
+  const ll = map.containerPointToLatLng([x,y]);
+  freehandPts.push(ll);
+}
+function fhMove(x, y) {
+  const rect = mapEl.getBoundingClientRect();
+  const rx=x-rect.left, ry=y-rect.top;
+  const ll = map.containerPointToLatLng([rx, ry]);
+  const last = freehandPts[freehandPts.length-1];
+  if (last && haversine(last,ll) < 0.015) return;
+  freehandPts.push(ll);
+  freehandStarted = freehandPts.length >= 4;
+  if (!freehandStarted) return;
+  if (!freehandLine) {
+    freehandLine = L.polyline(freehandPts,{color:'#3478f6',weight:4,opacity:.85,dashArray:'7,5',lineJoin:'round',lineCap:'round'}).addTo(map);
+  } else freehandLine.setLatLngs(freehandPts);
+  // Auto-pan near edges
+  const edge=40;
+  let dx=0,dy=0;
+  if (rx<edge) dx=-(edge-rx); else if (rx>rect.width-edge) dx=(edge-(rect.width-rx));
+  if (ry<edge) dy=-(edge-ry); else if (ry>rect.height-edge) dy=(edge-(rect.height-ry));
+  if (dx||dy) map.panBy([dx,dy],{animate:false});
+}
+function fhEnd() {
+  map.dragging.enable();
+  freehandActive=false;
+  if (!freehandStarted || freehandPts.length<5) { cleanFreehand(); return; }
+  let dist=0;
+  for (let i=1;i<freehandPts.length;i++) dist+=haversine(freehandPts[i-1],freehandPts[i]);
+  if (dist<0.03) { cleanFreehand(); return; }
+  const simple = rdp(freehandPts, 0.0003);
+  freehandLine = removeLayer(freehandLine);
+  spliceFreehand(simple);
+  freehandPts=[]; freehandStarted=false;
+}
+
+mapEl.addEventListener('touchstart', e=>{
+  if(!freehand)return; e.preventDefault();
+  const t=e.touches[0], r=mapEl.getBoundingClientRect();
+  fhStart(t.clientX-r.left, t.clientY-r.top);
+},{passive:false});
+mapEl.addEventListener('touchmove', e=>{
+  if(!freehand||!freehandActive)return; e.preventDefault();
+  const t=e.touches[0];
+  fhMove(t.clientX, t.clientY);
+},{passive:false});
+mapEl.addEventListener('touchend', e=>{
+  if(!freehand||!freehandActive)return; e.preventDefault();
+  fhEnd();
+},{passive:false});
+mapEl.addEventListener('mousedown', e=>{
+  if(!freehand||e.button!==0)return;
+  const r=mapEl.getBoundingClientRect();
+  fhStart(e.clientX-r.left, e.clientY-r.top);
+});
+mapEl.addEventListener('mousemove', e=>{ if(freehand&&freehandActive) fhMove(e.clientX,e.clientY); });
+mapEl.addEventListener('mouseup',   e=>{ if(freehand&&freehandActive) fhEnd(); });
+
+// ═══════════════════════════════════════════════════════════
+// ROUTING (GraphHopper)
+// ═══════════════════════════════════════════════════════════
+let routing=false, routeClickPts=[], routeMarkers=[], plannedRoute=[];
 
 function toggleRouting() {
-  routing = !routing;
-  drawing = false;
-  document.getElementById('drawIndicator').classList.remove('visible');
-  document.getElementById('btnDraw').classList.remove('primary');
-  document.getElementById('btnRoute').classList.toggle('primary', routing);
-  map.getContainer().style.cursor = routing ? 'crosshair' : '';
-
-  if (!routing) {
-    // Cancel — remove temp markers
-    routeClickPts = [];
-    routeMarkers.forEach(m => m.remove()); routeMarkers = [];
-    document.getElementById('routeIndicator').classList.remove('visible');
-    document.getElementById('btnCloseLoop').style.display = 'none';
-    document.getElementById('btnConfirm').style.display   = 'none';
-    showToast('Reititys peruutettu');
-  } else {
-    routeClickPts = [];
-    routeMarkers.forEach(m => m.remove()); routeMarkers = [];
-    document.getElementById('routeIndicator').classList.add('visible');
-    document.getElementById('routeIndicator').textContent = '🧭 Napauta lähtöpiste kartalle';
-    document.getElementById('btnCloseLoop').style.display = 'none';
-  }
+  if (routing) { cancelRouting(); return; }
+  routing=true;
+  if (drawing)  toggleDrawing();
+  if (freehand) toggleFreehand();
+  routeClickPts=[]; routeMarkers.forEach(m=>removeLayer(m)); routeMarkers=[];
+  document.getElementById('routeInd').textContent='🧭 Napauta lähtöpiste kartalle';
+  document.getElementById('routeInd').classList.add('visible');
+  document.getElementById('btnRoute').classList.add('primary');
+  map.getContainer().style.cursor='crosshair';
 }
-
+function cancelRouting() {
+  routing=false;
+  routeClickPts=[]; routeMarkers.forEach(m=>removeLayer(m)); routeMarkers=[];
+  document.getElementById('routeInd').classList.remove('visible');
+  document.getElementById('btnRoute').classList.remove('primary');
+  document.getElementById('btnCloseLoop').style.display='none';
+  document.getElementById('btnConfirm').style.display='none';
+  map.getContainer().style.cursor='';
+}
 function addRoutePoint(latlng) {
   routeClickPts.push(latlng);
-  const n = routeClickPts.length;
-  const isFirst = n === 1;
-  const icon = L.divIcon({
-    className: '',
-    html: `<div class="wp wp-${isFirst ? 'start' : 'mid'}" style="${isFirst?'':'background:#b07d2a'}"></div>`,
-    iconSize:[isFirst?18:14, isFirst?18:14],
-    iconAnchor:[isFirst?9:7, isFirst?9:7]
-  });
-  routeMarkers.push(L.marker(latlng, { icon }).addTo(map));
-
-  if (n === 1) {
-    document.getElementById('routeIndicator').textContent = '🧭 Napauta seuraava piste tai määränpää';
-    document.getElementById('btnConfirm').style.display = 'none';
+  const n=routeClickPts.length, isFirst=n===1;
+  const icon=L.divIcon({className:'',html:`<div class="wp wp-${isFirst?'start':'mid'}" style="${isFirst?'':'background:#b07d2a'}"></div>`,iconSize:[isFirst?18:14,isFirst?18:14],iconAnchor:[isFirst?9:7,isFirst?9:7]});
+  routeMarkers.push(L.marker(latlng,{icon}).addTo(map));
+  if (n===1) {
+    document.getElementById('routeInd').textContent='🧭 Napauta seuraava piste tai määränpää';
   } else {
-    document.getElementById('routeIndicator').textContent = `🧭 ${n} pistettä — napauta lisää, Valmis tai Ympyrä`;
-    document.getElementById('btnCloseLoop').style.display = '';
-    document.getElementById('btnConfirm').style.display = '';
+    document.getElementById('routeInd').textContent=`🧭 ${n} pistettä — lisää, Valmis tai Ympyrä`;
+    document.getElementById('btnCloseLoop').style.display='';
+    document.getElementById('btnConfirm').style.display='';
   }
 }
-
-async function fetchRoutedPath(pts) {
-  const url  = `https://graphhopper.com/api/1/route?key=${GH_KEY}`;
-  const body = {
-    profile: 'foot',
-    points: pts.map(p => [parseFloat(p.lng.toFixed(6)), parseFloat(p.lat.toFixed(6))]),
-    points_encoded: false
-  };
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(12000)
-  });
-  const j = await r.json();
-  if (!r.ok) {
-    // Show full error message
-    const msg = j?.message || (j?.hints && j.hints[0]?.message) || ('HTTP ' + r.status);
-    throw new Error(msg);
-  }
-  if (!j.paths?.length) throw new Error('Ei reittivaihtoehtoja');
-  return j.paths[0];
-}
+async function confirmRoute() { await buildRoute([...routeClickPts]); }
+async function closeLoop()    { await buildRoute([...routeClickPts, routeClickPts[0]]); }
 
 async function buildRoute(pts) {
-  if (pts.length < 2) { showToast('⚠️ Lisää vähintään 2 pistettä'); return; }
+  if (pts.length<2) { showToast('⚠️ Lisää vähintään 2 pistettä'); return; }
   document.getElementById('routingSpinner').classList.add('visible');
   try {
-    const path   = await fetchRoutedPath(pts);
-    const coords = path.points.coordinates;
-    plannedRoute = coords.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll; });
+    const r = await fetch(`https://graphhopper.com/api/1/route?key=${GH_KEY}`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({profile:'foot',points:pts.map(p=>[+p.lng.toFixed(6),+p.lat.toFixed(6)]),points_encoded:false}),
+      signal:AbortSignal.timeout(12000)
+    });
+    const j=await r.json();
+    if (!r.ok) throw new Error(j?.message||'HTTP '+r.status);
+    if (!j.paths?.length) throw new Error('Ei reittivaihtoehtoja');
+    const path=j.paths[0];
+    plannedRoute = path.points.coordinates.map(c=>{ const ll=L.latLng(c[1],c[0]); ll.ele=c[2]??null; return ll; });
 
-    // Store as routed segment using new flat architecture
-    saveHistory();
-    waypoints     = plannedRoute;
-    waypointTypes = plannedRoute.map(() => 'routed');
-    rebuildPolylines();
-    if (segmentLines.length) map.fitBounds(segmentLines[0].getBounds(), { padding:[30,30] });
+    saveState();
+    waypoints = plannedRoute;
+    wpTypes   = plannedRoute.map(()=>'routed');
+    redraw();
+    if (segLines.length) map.fitBounds(segLines[0].getBounds(),{padding:[30,30]});
 
-    // Show ascent/descent from GH if available
-    const ascend  = Math.round(path.ascend  ?? 0);
-    const descend = Math.round(path.descend ?? 0);
-    if (ascend > 0 || descend > 0) {
-      document.getElementById('statUp').textContent   = '+'+ascend+'m';
-      document.getElementById('statDown').textContent = '-'+descend+'m';
-    }
-
-    // Set elevation array and fetch from Open-Meteo
-    routeElevations = plannedRoute.map(p => p.ele);
-    updateStats();
-    setTimeout(fetchRouteElevation, 500); // slight delay to let map render first
-    document.getElementById('btnExportRoute').style.display = '';
+    const asc=Math.round(path.ascend??0), desc=Math.round(path.descend??0);
+    if (asc||desc) { document.getElementById('statUp').textContent='+'+asc+'m'; document.getElementById('statDown').textContent='-'+desc+'m'; }
+    routeElevations=plannedRoute.map(p=>p.ele);
+    document.getElementById('btnExportRoute').style.display='';
     showToast(`🧭 Reitti löydetty — ${(path.distance/1000).toFixed(2)} km`);
-  } catch(err) {
-    showToast('⚠️ ' + (err.message || 'Tuntematon virhe').slice(0, 120));
-    console.error('GraphHopper error:', err);
+  } catch(e) {
+    showToast('⚠️ '+e.message.slice(0,100));
   } finally {
     document.getElementById('routingSpinner').classList.remove('visible');
-    routeClickPts = [];
-    routeMarkers.forEach(m => m.remove()); routeMarkers = [];
-    routing = false;
-    document.getElementById('routeIndicator').classList.remove('visible');
-    document.getElementById('btnRoute').classList.remove('primary');
-    document.getElementById('btnCloseLoop').style.display = 'none';
-    document.getElementById('btnConfirm').style.display   = 'none';
-    map.getContainer().style.cursor = '';
+    cancelRouting();
   }
 }
 
-// "Reititä" — route through all tapped points A→B→C…
-async function confirmRoute() {
-  if (routeClickPts.length < 2) { showToast('⚠️ Lisää vähintään 2 pistettä'); return; }
-  await buildRoute([...routeClickPts]);
-}
+// ═══════════════════════════════════════════════════════════
+// STATS & ELEVATION
+// ═══════════════════════════════════════════════════════════
+const SPEED={normal:4.5,dog:3.5};
+let withDog=false, routeElevations=[], eleTimer=null;
 
-// "Sulje ympyrä" — add start as last point so route loops back
-async function closeLoop() {
-  if (routeClickPts.length < 2) { showToast('⚠️ Lisää ensin pisteitä'); return; }
-  await buildRoute([...routeClickPts, routeClickPts[0]]);
-}
-
-function clearPlannedRoute(full = true) {
-  segmentLines.forEach(l => map.removeLayer(l)); segmentLines = [];
-  if (planLine)      { map.removeLayer(planLine);      planLine = null; }
-  if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
-  if (routeLine)     { map.removeLayer(routeLine);     routeLine = null; }
-  // Always reset segments and planned route
-  segments = []; plannedRoute = [];
-  if (full) {
-    waypoints = []; markers.forEach(m => m.remove()); markers = [];
-    routeElevations = [];
-  }
-}
-
-// Show planned route as ghost during live tracking
-function showPlanGhost() {
-  if (!plannedRoute.length) return;
-  if (planGhostLine) { map.removeLayer(planGhostLine); }
-  planGhostLine = L.polyline(plannedRoute, {
-    color: '#b07d2a', weight: 3, opacity: 0.5,
-    dashArray: '8,6', lineJoin: 'round'
-  }).addTo(map);
-  // Keep GPS track on top
-  if (trackLine) trackLine.bringToFront();
-  document.getElementById('trackLegend').classList.add('visible');
-}
-
-function hidePlanGhost() {
-  if (planGhostLine) { map.removeLayer(planGhostLine); planGhostLine = null; }
-  document.getElementById('trackLegend').classList.remove('visible');
-}
-
-// ── TRACKING GAP FILL ─────────────────────────────────────
-// When GPS signal is lost and we have a planned route,
-// find the nearest point on the plan and interpolate forward
-let lastGpsLl = null;
-let gapFillLine = null;
-let gpsLostTimer = null;
-const GPS_TIMEOUT_MS = 25000; // consider signal lost after 25s
-
-function scheduleGpsLostCheck() {
-  clearTimeout(gpsLostTimer);
-  gpsLostTimer = setTimeout(() => {
-    if (!tracking || !plannedRoute.length || !lastGpsLl) return;
-    showToast('📡 GPS-signaali heikko — täydennetään suunnitelmasta');
-    fillGapFromPlan();
-  }, GPS_TIMEOUT_MS);
-}
-
-function fillGapFromPlan() {
-  if (!lastGpsLl || !plannedRoute.length) return;
-  // Find closest point on planned route to last known GPS position
-  let minDist = Infinity, closestIdx = 0;
-  plannedRoute.forEach((p, i) => {
-    const d = haversine(lastGpsLl, p);
-    if (d < minDist) { minDist = d; closestIdx = i; }
-  });
-  // Take plan from that point forward as gap fill
-  const gapPts = [lastGpsLl, ...plannedRoute.slice(closestIdx)];
-  if (gapFillLine) map.removeLayer(gapFillLine);
-  gapFillLine = L.polyline(gapPts, {
-    color: '#b07d2a', weight: 3, opacity: 0.7,
-    dashArray: '6,5', lineJoin: 'round'
-  }).addTo(map);
-  // Keep GPS track on top
-  if (trackLine) trackLine.bringToFront();
-}
-
-function clearGapFill() {
-  if (gapFillLine) { map.removeLayer(gapFillLine); gapFillLine = null; }
-}
 function haversine(a,b) {
-  const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lng-a.lng)*Math.PI/180;
+  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lng-a.lng)*Math.PI/180;
   const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-
-// Tobler's hiking function: speed km/h based on slope (rise/run)
-function toblerSpeed(slopeRatio, baseSpeed) {
-  // W = 6 * e^(-3.5 * |slope + 0.05|) — adjusted to user base speed
-  const ref = 6 * Math.exp(-3.5 * Math.abs(0.05)); // flat speed in Tobler
-  const w   = 6 * Math.exp(-3.5 * Math.abs(slopeRatio + 0.05));
-  return baseSpeed * (w / ref);
+function toblerSpeed(slope,base) {
+  const ref=6*Math.exp(-3.5*Math.abs(.05));
+  return base*(6*Math.exp(-3.5*Math.abs(slope+.05))/ref);
 }
-
-// Compute time using Tobler when elevation profile is known
-function computeToblerTime(pts, elevations, baseSpeed) {
-  let totalHours = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const distKm = haversine(pts[i-1], pts[i]);
-    const distM  = distKm * 1000;
-    const dEle   = (elevations[i] ?? elevations[i-1] ?? 0) - (elevations[i-1] ?? 0);
-    const slope  = distM > 0 ? dEle / distM : 0;
-    const spd    = toblerSpeed(slope, baseSpeed);
-    totalHours  += distKm / Math.max(spd, 0.5);
-  }
-  return totalHours * 60; // minutes
-}
-
-function formatMins(mins) {
-  return mins >= 60 ? `${Math.floor(mins/60)}h ${Math.round(mins%60)}min` : Math.round(mins)+'min';
-}
-
-// Route elevation profile state
-let routeElevations = []; // parallel array to waypoints
-let eleTimer = null;
+function fmtMins(m) { return m>=60?`${Math.floor(m/60)}h ${Math.round(m%60)}min`:Math.round(m)+'min'; }
 
 function updateStats() {
-  let dist = 0;
-  for (let i=1; i<waypoints.length; i++) dist += haversine(waypoints[i-1], waypoints[i]);
+  let dist=0;
+  for (let i=1;i<waypoints.length;i++) dist+=haversine(waypoints[i-1],waypoints[i]);
   document.getElementById('statDist').textContent = dist<1?(dist*1000).toFixed(0)+' m':dist.toFixed(2)+' km';
 
-  const baseSpeed = withDog ? SPEED.dog : SPEED.normal;
-  if (routeElevations.length === waypoints.length && waypoints.length > 1) {
-    const mins = computeToblerTime(waypoints, routeElevations, baseSpeed);
-    document.getElementById('statTime').textContent = formatMins(mins);
-    let up=0, down=0;
-    for (let i=1; i<routeElevations.length; i++) {
-      const d = (routeElevations[i]??0) - (routeElevations[i-1]??0);
-      if (d>0) up+=d; else down+=Math.abs(d);
+  const spd=withDog?SPEED.dog:SPEED.normal;
+  if (routeElevations.length===waypoints.length && waypoints.length>1) {
+    let hrs=0,up=0,dn=0;
+    for (let i=1;i<waypoints.length;i++) {
+      const dkm=haversine(waypoints[i-1],waypoints[i]);
+      const dEle=(routeElevations[i]??0)-(routeElevations[i-1]??0);
+      const slope=dkm>0?dEle/(dkm*1000):0;
+      hrs+=dkm/Math.max(toblerSpeed(slope,spd),.5);
+      if(dEle>0)up+=dEle; else dn+=Math.abs(dEle);
     }
-    document.getElementById('statUp').textContent   = up>0   ? '+'+Math.round(up)+'m'   : '0 m';
-    document.getElementById('statDown').textContent = down>0 ? '-'+Math.round(down)+'m' : '0 m';
+    document.getElementById('statTime').textContent=fmtMins(hrs*60);
+    document.getElementById('statUp').textContent  =up>0?'+'+Math.round(up)+'m':'0 m';
+    document.getElementById('statDown').textContent=dn>0?'-'+Math.round(dn)+'m':'0 m';
   } else {
-    const mins = Math.round((dist/baseSpeed)*60);
-    document.getElementById('statTime').textContent = formatMins(mins);
-    if (waypoints.length > 1) {
-      document.getElementById('statUp').textContent   = '…';
-      document.getElementById('statDown').textContent = '…';
-    } else {
-      document.getElementById('statUp').textContent   = '– m';
-      document.getElementById('statDown').textContent = '– m';
-    }
+    document.getElementById('statTime').textContent=fmtMins((dist/spd)*60);
+    if (waypoints.length>1){document.getElementById('statUp').textContent='…';document.getElementById('statDown').textContent='…';}
   }
-
-  document.getElementById('btnExportRoute').style.display = waypoints.length>1 ? '' : 'none';
-  document.getElementById('btnExportTrack').style.display = trackPts.length>1  ? '' : 'none';
 }
 
-// Fetch elevation and update display — uses GET in chunks of 100 points
-async function fetchRouteElevation() {
-  if (waypoints.length === 0) return;
-  try {
-    const pts = waypoints;
+function scheduleElevation() {
+  clearTimeout(eleTimer);
+  if (waypoints.length>0) eleTimer=setTimeout(fetchElevation,1200);
+}
 
-    // Sample max 100 points evenly
-    const max = 100;
+async function fetchElevation() {
+  if (!waypoints.length) return;
+  try {
+    const pts=waypoints, max=100;
     let sampled;
-    if (pts.length <= max) {
-      sampled = pts.map((p,i) => ({ p, i }));
-    } else {
-      sampled = [];
-      for (let s=0; s<max; s++) {
-        const i = Math.round(s * (pts.length-1) / (max-1));
-        sampled.push({ p: pts[i], i });
-      }
+    if (pts.length<=max) sampled=pts.map((p,i)=>({p,i}));
+    else { sampled=[]; for(let s=0;s<max;s++){const i=Math.round(s*(pts.length-1)/(max-1));sampled.push({p:pts[i],i});} }
+    const lats=sampled.map(({p})=>p.lat.toFixed(5)).join(',');
+    const lngs=sampled.map(({p})=>p.lng.toFixed(5)).join(',');
+    const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`,{signal:AbortSignal.timeout(10000)});
+    if(!r.ok)throw new Error();
+    const j=await r.json();
+    const elevs=j.elevation;
+    if(!elevs||elevs.length!==sampled.length)throw new Error();
+    routeElevations=new Array(pts.length).fill(null);
+    sampled.forEach(({i},si)=>routeElevations[i]=elevs[si]);
+    for(let i=0;i<pts.length;i++){
+      if(routeElevations[i]!==null)continue;
+      const prev=sampled.filter(s=>s.i<=i).pop();
+      const next=sampled.find(s=>s.i>=i);
+      if(prev&&next&&prev.i!==next.i){const t=(i-prev.i)/(next.i-prev.i);routeElevations[i]=routeElevations[prev.i]+t*(routeElevations[next.i]-routeElevations[prev.i]);}
+      else if(prev)routeElevations[i]=routeElevations[prev.i];
+      else if(next)routeElevations[i]=routeElevations[next.i];
     }
-
-    // GET request with comma-separated coordinates
-    const lats = sampled.map(({p}) => p.lat.toFixed(5)).join(',');
-    const lngs = sampled.map(({p}) => p.lng.toFixed(5)).join(',');
-    const url  = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`;
-    const r    = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j    = await r.json();
-    const elevs = j.elevation;
-    if (!elevs || elevs.length !== sampled.length) throw new Error('Bad response');
-
-    // Map back with interpolation
-    routeElevations = new Array(pts.length).fill(null);
-    sampled.forEach(({i}, si) => { routeElevations[i] = elevs[si]; });
-    for (let i=0; i<pts.length; i++) {
-      if (routeElevations[i] !== null) continue;
-      const prev = sampled.filter(s => s.i <= i).pop();
-      const next = sampled.find(s => s.i >= i);
-      if (prev && next && prev.i !== next.i) {
-        const t = (i - prev.i) / (next.i - prev.i);
-        routeElevations[i] = routeElevations[prev.i] + t * (routeElevations[next.i] - routeElevations[prev.i]);
-      } else if (prev) {
-        routeElevations[i] = routeElevations[prev.i];
-      } else if (next) {
-        routeElevations[i] = routeElevations[next.i];
-      }
-    }
-
-    // Update display directly
-    const lastEle = routeElevations[routeElevations.length-1];
-    if (lastEle !== null) document.getElementById('statEle').textContent = Math.round(lastEle)+' m';
-
-    const baseSpeed = withDog ? SPEED.dog : SPEED.normal;
-    const mins = computeToblerTime(waypoints, routeElevations, baseSpeed);
-    document.getElementById('statTime').textContent = formatMins(mins);
-
-    let up=0, down=0;
-    for (let i=1; i<routeElevations.length; i++) {
-      const d = (routeElevations[i]??0) - (routeElevations[i-1]??0);
-      if (d>0) up+=d; else down+=Math.abs(d);
-    }
-    document.getElementById('statUp').textContent   = up>0   ? '+'+Math.round(up)+'m'   : '0 m';
-    document.getElementById('statDown').textContent = down>0 ? '-'+Math.round(down)+'m' : '0 m';
-
-  } catch(e) {
-    showToast('⚠️ Korkeustietoa ei saatu: ' + e.message);
-  }
+    const last=routeElevations[routeElevations.length-1];
+    if(last!==null)document.getElementById('statEle').textContent=Math.round(last)+' m';
+    updateStats();
+  } catch(e){}
 }
 
-async function fetchElevation(latlng) {
+async function fetchCurrentElevation(ll) {
   try {
-    const url = `https://api.open-meteo.com/v1/elevation?latitude=${latlng.lat.toFixed(5)}&longitude=${latlng.lng.toFixed(5)}`;
-    const r   = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!r.ok) throw new Error();
-    const j   = await r.json();
-    const ele = j.elevation?.[0];
-    if (ele !== undefined) document.getElementById('statEle').textContent = Math.round(ele)+' m';
-  } catch(e) {}
+    const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${ll.lat.toFixed(5)}&longitude=${ll.lng.toFixed(5)}`,{signal:AbortSignal.timeout(5000)});
+    const j=await r.json();
+    const e=j.elevation?.[0];
+    if(e!==undefined)document.getElementById('statEle').textContent=Math.round(e)+' m';
+  } catch(e){}
 }
 
-// ── MODE ──────────────────────────────────────────────────
 function setMode(m) {
-  withDog = m==='dog';
+  withDog=m==='dog';
   document.getElementById('btnNormal').classList.toggle('active',!withDog);
   document.getElementById('btnDog').classList.toggle('active',withDog);
-  showToast(withDog?'🐕 Koiratila – hitaampi tahti':'🚶 Kävelytila');
+  showToast(withDog?'🐕 Koiratila':'🚶 Kävelytila');
   updateStats();
 }
 
-// ── SERVICE WORKER ────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
-}
+// ═══════════════════════════════════════════════════════════
+// GPS TRACKING
+// ═══════════════════════════════════════════════════════════
+const STORAGE_KEY='retkikartta_track';
+let tracking=false,watchId=null,trackPts=[],trackStart=null,trackTimer=null,centerLocked=true,lastGpsTime=0;
+let wakeLock=null;
 
-// ── WAKE LOCK ─────────────────────────────────────────────
-let wakeLock = null;
-async function requestWakeLock() {
-  if (!('wakeLock' in navigator)) return;
-  try {
-    wakeLock = await navigator.wakeLock.request('screen');
-    wakeLock.addEventListener('release', () => { wakeLock=null; });
-  } catch(e) {}
-}
-function releaseWakeLock() {
-  if (wakeLock) { wakeLock.release(); wakeLock=null; }
-}
-// Re-acquire wake lock if page becomes visible again
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState==='visible' && tracking) requestWakeLock();
-});
+async function reqWakeLock(){if(!('wakeLock'in navigator))return;try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>wakeLock=null);}catch(e){}}
+function relWakeLock(){if(wakeLock){wakeLock.release();wakeLock=null;}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&tracking)reqWakeLock();});
 
-// ── TRACK STORAGE ─────────────────────────────────────────
-const STORAGE_KEY = 'retkikartta_track';
+function saveTrack(){if(!trackPts.length)return;try{localStorage.setItem(STORAGE_KEY,JSON.stringify({start:trackStart,saved:Date.now(),points:trackPts.map(p=>[+p.lat.toFixed(6),+p.lng.toFixed(6),p.ele??null])}));}catch(e){}}
+function clearTrackStorage(){try{localStorage.removeItem(STORAGE_KEY);}catch(e){}}
+function loadTrack(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return;const d=JSON.parse(raw);if(Date.now()-d.saved>86400000){localStorage.removeItem(STORAGE_KEY);return;}if(!d.points||d.points.length<2)return;trackPts=d.points.map(p=>{const ll=L.latLng(p[0],p[1]);ll.ele=p[2]??null;return ll;});trackStart=d.start;trackLine=L.polyline(trackPts,{color:'#3478f6',weight:4,opacity:.85,lineJoin:'round',lineCap:'round'}).addTo(map);map.fitBounds(trackLine.getBounds(),{padding:[30,30]});document.getElementById('btnExportTrack').style.display='';showToast('📂 Edellinen reitti palautettu');}catch(e){}}
 
-function saveTrackToStorage() {
-  if (!trackPts.length) return;
-  const data = {
-    start: trackStart,
-    saved: Date.now(),
-    points: trackPts.map(p => [parseFloat(p.lat.toFixed(6)), parseFloat(p.lng.toFixed(6)), p.ele != null ? parseFloat(p.ele.toFixed(1)) : null])
-  };
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
-}
-
-function loadTrackFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (Date.now() - data.saved > 86400000) { localStorage.removeItem(STORAGE_KEY); return; }
-    if (!data.points || data.points.length < 2) return;
-    trackPts = data.points.map(p => { const ll=L.latLng(p[0],p[1]); ll.ele=p[2]??null; return ll; });
-    trackStart = data.start;
-    trackLine  = L.polyline(trackPts, {color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
-    map.fitBounds(trackLine.getBounds(), {padding:[30,30]});
-    document.getElementById('btnExportTrack').style.display = '';
-    showToast('📂 Edellinen reitti palautettu');
-  } catch(e) {}
-}
-
-function clearTrackStorage() {
-  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
-}
-
-// ── GPS ───────────────────────────────────────────────────
-let tracking=false, watchId=null, gpsMarker=null, gpsCircle=null;
-let trackLine=null, trackPts=[], trackStart=null, trackTimer=null, centerLocked=true;
-
-function locateOnce() {
+function locateOnce(){
   showToast('Haetaan sijaintia…');
-  navigator.geolocation.getCurrentPosition(
-    async pos => {
-      const ll=L.latLng(pos.coords.latitude,pos.coords.longitude);
-      map.setView(ll,14);
-      placeGpsDot(ll,pos.coords.accuracy);
-      // Elevation from GPS barometer if available, otherwise API
-      if (pos.coords.altitude !== null) {
-        document.getElementById('statEle').textContent = Math.round(pos.coords.altitude)+' m';
-      } else {
-        fetchElevation(ll);
-      }
-      showToast('📍 Sijainti löydetty!');
-      if(drawing) addWaypoint(ll);
-    },
-    () => showToast('⚠️ Sijaintia ei löydy'),
-    { enableHighAccuracy:true, timeout:10000 }
-  );
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const ll=L.latLng(pos.coords.latitude,pos.coords.longitude);
+    map.setView(ll,14); placeGpsDot(ll,pos.coords.accuracy);
+    if(pos.coords.altitude!==null)document.getElementById('statEle').textContent=Math.round(pos.coords.altitude)+' m';
+    else fetchCurrentElevation(ll);
+    showToast('📍 Sijainti löydetty!');
+    if(drawing)addPoint(ll,'drawn');
+  },()=>showToast('⚠️ Sijaintia ei löydy'),{enableHighAccuracy:true,timeout:10000});
 }
 
-function toggleTracking() { tracking?stopTracking():startTracking(); }
+function toggleTracking(){tracking?stopTracking():startTracking();}
 
-function startTracking() {
+function startTracking(){
   if(!navigator.geolocation){showToast('⚠️ GPS ei tuettu');return;}
-  tracking=true; trackPts=[]; trackStart=Date.now(); centerLocked=true;
-  lastGpsLl = null; lastGpsTime = 0;
-  const btn = document.getElementById('fabTrack');
-  btn.classList.remove('track-off'); btn.classList.add('track-on');
-  btn.textContent='⏹️';
+  tracking=true;trackPts=[];trackStart=Date.now();centerLocked=true;lastGpsTime=0;
+  const btn=document.getElementById('fabTrack');btn.classList.add('track-on');btn.textContent='⏹️';
   document.getElementById('trackOverlay').classList.add('visible');
   document.getElementById('centerToggle').classList.add('visible','locked');
-  if(trackLine){map.removeLayer(trackLine);trackLine=null;}
-  clearTrackStorage();
-  requestWakeLock();
-  // Show planned route as ghost reference if one exists
-  if (plannedRoute.length) showPlanGhost();
+  trackLine=removeLayer(trackLine);
+  clearTrackStorage(); reqWakeLock();
+  if(plannedRoute.length)showPlanGhost();
   watchId=navigator.geolocation.watchPosition(onGps,()=>showToast('⚠️ GPS-virhe'),{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
   trackTimer=setInterval(updateTrackTime,1000);
-  showToast('🛰️ GPS-seuranta käynnistetty — näyttö pysyy päällä');
+  showToast('🛰️ GPS-seuranta käynnistetty');
 }
 
-function stopTracking() {
+function stopTracking(){
   if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
-  clearInterval(trackTimer); clearTimeout(gpsLostTimer); tracking=false;
-  releaseWakeLock();
-  saveTrackToStorage();
-  clearGapFill();
-  hidePlanGhost();
-  const btn = document.getElementById('fabTrack');
-  btn.classList.remove('track-on'); btn.classList.add('track-off');
-  btn.textContent='🛰️';
+  clearInterval(trackTimer); tracking=false; relWakeLock(); saveTrack();
+  planGhostLine=removeLayer(planGhostLine);
+  document.getElementById('trackLegend').classList.remove('visible');
+  const btn=document.getElementById('fabTrack');btn.classList.remove('track-on');btn.textContent='🛰️';
   document.getElementById('trackOverlay').classList.remove('visible');
   document.getElementById('centerToggle').classList.remove('visible');
-  const d=trackDistKm();
-  showToast(`⏹️ Lopetettu – ${d<1?(d*1000).toFixed(0)+' m':d.toFixed(2)+' km'} – tallennettu`);
+  const d=trackDistKm();showToast(`⏹️ ${d<1?(d*1000).toFixed(0)+' m':d.toFixed(2)+' km'} tallennettu`);
 }
 
-let lastGpsTime = 0;
-
-function onGps(pos) {
-  // Throttle: ignore updates closer than 10 seconds apart
-  const now = Date.now();
-  if (now - lastGpsTime < 10000) return;
-  lastGpsTime = now;
-
+function onGps(pos){
+  const now=Date.now();if(now-lastGpsTime<10000)return;lastGpsTime=now;
   const ll=L.latLng(pos.coords.latitude,pos.coords.longitude);
-  const ele = pos.coords.altitude !== null ? pos.coords.altitude : null;
-  ll.ele = ele;
+  ll.ele=pos.coords.altitude??null;
   placeGpsDot(ll,pos.coords.accuracy);
   trackPts.push(ll);
-  lastGpsLl = ll;
-  clearGapFill(); // GPS is back — remove any gap fill
-  scheduleGpsLostCheck(); // restart the lost-signal timer
-
-  // Update live elevation display
-  if (ele !== null) {
-    document.getElementById('statEle').textContent = Math.round(ele)+' m';
-  } else {
-    if (trackPts.length % 5 === 1) fetchElevationForTrack(ll, trackPts.length-1);
+  if(ll.ele!==null)document.getElementById('statEle').textContent=Math.round(ll.ele)+' m';
+  if(trackPts.length%10===0)saveTrack();
+  document.getElementById('btnExportTrack').style.display=trackPts.length>1?'':'none';
+  if(trackPts.length>1){
+    const smooth=catmull(trackPts);
+    if(!trackLine)trackLine=L.polyline(smooth,{color:'#3478f6',weight:4,opacity:.85,lineJoin:'round',lineCap:'round'}).addTo(map);
+    else trackLine.setLatLngs(smooth);
   }
-
-  // Auto-save every 10 points
-  if (trackPts.length % 10 === 0) saveTrackToStorage();
-  document.getElementById('btnExportTrack').style.display = trackPts.length>1 ? '' : 'none';
-
-  // Draw Bezier-smoothed track
-  if (trackPts.length > 1) {
-    const smoothed = bezierSmooth(trackPts);
-    if (!trackLine) {
-      trackLine = L.polyline(smoothed, {color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
-    } else {
-      trackLine.setLatLngs(smoothed);
-    }
-  }
-
-  if(centerLocked) map.panTo(ll,{animate:true,duration:0.5});
+  if(centerLocked)map.panTo(ll,{animate:true,duration:.5});
   const d=trackDistKm();
-  document.getElementById('trkDist').textContent = d<1?(d*1000).toFixed(0)+' m':d.toFixed(2)+' km';
-  document.getElementById('trkAcc').textContent  = pos.coords.accuracy<10?'✅ '+pos.coords.accuracy.toFixed(0)+'m':pos.coords.accuracy.toFixed(0)+' m';
-  const spd=pos.coords.speed;
-  if(spd!==null&&spd>=0) document.getElementById('trkSpeed').textContent=(spd*3.6).toFixed(1)+' km/h';
+  document.getElementById('trkDist').textContent=d<1?(d*1000).toFixed(0)+' m':d.toFixed(2)+' km';
+  document.getElementById('trkAcc').textContent=pos.coords.accuracy<10?'✅ '+pos.coords.accuracy.toFixed(0)+'m':pos.coords.accuracy.toFixed(0)+' m';
+  const spd=pos.coords.speed;if(spd!==null&&spd>=0)document.getElementById('trkSpeed').textContent=(spd*3.6).toFixed(1)+' km/h';
 }
 
-// Catmull-Rom spline smoothing for GPS track
-// Inserts interpolated points between each GPS fix for a natural curve
-function bezierSmooth(pts) {
-  if (pts.length < 3) return pts;
-  const out = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(i-1, 0)];
-    const p1 = pts[i];
-    const p2 = pts[i+1];
-    const p3 = pts[Math.min(i+2, pts.length-1)];
-    for (let t = 0; t < 1; t += 0.125) {
-      const t2 = t*t, t3 = t2*t;
-      const lat =
-        0.5 * ((2*p1.lat) +
-        (-p0.lat + p2.lat)*t +
-        (2*p0.lat - 5*p1.lat + 4*p2.lat - p3.lat)*t2 +
-        (-p0.lat + 3*p1.lat - 3*p2.lat + p3.lat)*t3);
-      const lng =
-        0.5 * ((2*p1.lng) +
-        (-p0.lng + p2.lng)*t +
-        (2*p0.lng - 5*p1.lng + 4*p2.lng - p3.lng)*t2 +
-        (-p0.lng + 3*p1.lng - 3*p2.lng + p3.lng)*t3);
-      out.push(L.latLng(lat, lng));
+function catmull(pts){
+  if(pts.length<3)return pts;
+  const out=[];
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[Math.max(i-1,0)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(i+2,pts.length-1)];
+    for(let t=0;t<1;t+=.125){
+      const t2=t*t,t3=t2*t;
+      out.push(L.latLng(
+        .5*((2*p1.lat)+(-p0.lat+p2.lat)*t+(2*p0.lat-5*p1.lat+4*p2.lat-p3.lat)*t2+(-p0.lat+3*p1.lat-3*p2.lat+p3.lat)*t3),
+        .5*((2*p1.lng)+(-p0.lng+p2.lng)*t+(2*p0.lng-5*p1.lng+4*p2.lng-p3.lng)*t2+(-p0.lng+3*p1.lng-3*p2.lng+p3.lng)*t3)
+      ));
     }
   }
-  out.push(pts[pts.length-1]);
-  return out;
+  out.push(pts[pts.length-1]); return out;
 }
 
-async function fetchElevationForTrack(ll, idx) {
-  try {
-    const url = `https://api.open-meteo.com/v1/elevation?latitude=${ll.lat.toFixed(5)}&longitude=${ll.lng.toFixed(5)}`;
-    const r   = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!r.ok) throw new Error();
-    const j   = await r.json();
-    const ele = j.elevation?.[0];
-    if (ele !== undefined && trackPts[idx]) {
-      trackPts[idx].ele = ele;
-      document.getElementById('statEle').textContent = Math.round(ele)+' m';
-    }
-  } catch(e) {}
-}
-
-// ── GPX EXPORT ────────────────────────────────────────────
-function exportGPX(type) {
-  const pts  = type === 'track' ? trackPts : waypoints;
-  const name = type === 'track' ? 'Kuljettu reitti' : 'Suunniteltu reitti';
-  if (!pts.length) { showToast('Ei reittipisteitä'); return; }
-
-  const now  = new Date().toISOString();
-  const ts   = new Date().toISOString().slice(0,19).replace(/[-:T]/g,'-');
-
-  let inner = '';
-  if (type === 'track') {
-    // GPX track (trkseg) for recorded GPS path
-    const trkpts = pts.map(p => {
-      const ele = p.ele != null ? `\n      <ele>${p.ele.toFixed(1)}</ele>` : '';
-      return `    <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">${ele}\n    </trkpt>`;
-    }).join('\n');
-    inner = `  <trk>\n    <name>${name}</name>\n    <trkseg>\n${trkpts}\n    </trkseg>\n  </trk>`;
-  } else {
-    // GPX route (rte) for planned waypoint route
-    const rtepts = pts.map((p,i) => {
-      const ele = p.ele != null ? `\n      <ele>${p.ele.toFixed(1)}</ele>` : '';
-      return `    <rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">${ele}\n      <name>WP${i+1}</name>\n    </rtept>`;
-    }).join('\n');
-    inner = `  <rte>\n    <name>${name}</name>\n${rtepts}\n  </rte>`;
-  }
-
-  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Retkikartta" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata>
-    <name>${name}</name>
-    <time>${now}</time>
-  </metadata>
-${inner}
-</gpx>`;
-
-  const blob = new Blob([gpx], { type:'application/gpx+xml' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `retkikartta-${type}-${ts}.gpx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('⬇️ GPX-tiedosto ladattu!');
-}
-
-function placeGpsDot(ll,acc) {
-  if(gpsMarker){map.removeLayer(gpsMarker);gpsMarker=null;}
-  if(gpsCircle){map.removeLayer(gpsCircle);gpsCircle=null;}
-  if(acc&&acc<300) gpsCircle=L.circle(ll,{radius:acc,color:'#3478f6',fillColor:'#3478f6',fillOpacity:0.07,weight:1,opacity:0.35}).addTo(map);
+function placeGpsDot(ll,acc){
+  gpsMarker=removeLayer(gpsMarker);gpsCircle=removeLayer(gpsCircle);
+  if(acc&&acc<300)gpsCircle=L.circle(ll,{radius:acc,color:'#3478f6',fillColor:'#3478f6',fillOpacity:.07,weight:1,opacity:.35}).addTo(map);
   gpsMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="gps-dot"></div>',iconSize:[16,16],iconAnchor:[8,8]}),zIndexOffset:1000}).addTo(map);
 }
+function updateTrackTime(){if(!trackStart)return;const e=Math.floor((Date.now()-trackStart)/1000),h=Math.floor(e/3600),m=Math.floor((e%3600)/60),s=e%60;document.getElementById('trkTime').textContent=h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;}
+function toggleCenter(){centerLocked=!centerLocked;const b=document.getElementById('centerToggle');b.classList.toggle('locked',centerLocked);b.textContent=centerLocked?'🔒 Seuraa sijaintia':'🔓 Vapaa kartta';if(centerLocked&&gpsMarker)map.panTo(gpsMarker.getLatLng());}
+function trackDistKm(){let d=0;for(let i=1;i<trackPts.length;i++)d+=haversine(trackPts[i-1],trackPts[i]);return d;}
 
-function updateTrackTime() {
-  if(!trackStart)return;
-  const e=Math.floor((Date.now()-trackStart)/1000), h=Math.floor(e/3600), m=Math.floor((e%3600)/60), s=e%60;
-  document.getElementById('trkTime').textContent=h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
+function showPlanGhost(){
+  planGhostLine=removeLayer(planGhostLine);
+  if(!plannedRoute.length)return;
+  planGhostLine=L.polyline(plannedRoute,{color:'#b07d2a',weight:3,opacity:.5,dashArray:'8,6',lineJoin:'round'}).addTo(map);
+  if(trackLine)trackLine.bringToFront();
+  document.getElementById('trackLegend').classList.add('visible');
 }
 
-function toggleCenter() {
-  centerLocked=!centerLocked;
-  const b=document.getElementById('centerToggle');
-  b.classList.toggle('locked',centerLocked);
-  b.textContent=centerLocked?'🔒 Seuraa sijaintia':'🔓 Vapaa kartta';
-  if(centerLocked&&gpsMarker) map.panTo(gpsMarker.getLatLng());
+// ═══════════════════════════════════════════════════════════
+// GPX EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════════
+function exportGPX(type){
+  const pts=type==='track'?trackPts:waypoints;
+  if(!pts.length){showToast('Ei pisteitä');return;}
+  const name=type==='track'?'Kuljettu reitti':'Suunniteltu reitti';
+  const ts=new Date().toISOString().slice(0,19).replace(/[-:T]/g,'-');
+  let inner='';
+  if(type==='track'){
+    inner=`  <trk><name>${name}</name><trkseg>\n`+pts.map(p=>`    <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">${p.ele!=null?`<ele>${p.ele.toFixed(1)}</ele>`:''}</trkpt>`).join('\n')+'\n  </trkseg></trk>';
+  }else{
+    inner=`  <rte><name>${name}</name>\n`+pts.map((p,i)=>`    <rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">${p.ele!=null?`<ele>${p.ele.toFixed(1)}</ele>`:''}<name>WP${i+1}</name></rtept>`).join('\n')+'\n  </rte>';
+  }
+  const gpx=`<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Retkikartta" xmlns="http://www.topografix.com/GPX/1/1">\n  <metadata><name>${name}</name><time>${new Date().toISOString()}</time></metadata>\n${inner}\n</gpx>`;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([gpx],{type:'application/gpx+xml'}));a.download=`retkikartta-${type}-${ts}.gpx`;document.body.appendChild(a);a.click();document.body.removeChild(a);
+  showToast('⬇️ GPX ladattu!');
 }
 
-function trackDistKm() {
-  let d=0; for(let i=1;i<trackPts.length;i++) d+=haversine(trackPts[i-1],trackPts[i]); return d;
-}
-
-// ── GPX IMPORT ────────────────────────────────────────────
-function importGPX(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const xml    = new DOMParser().parseFromString(e.target.result, 'application/xml');
-      const ns     = 'http://www.topografix.com/GPX/1/1';
-
-      // Helper: parse points from a nodelist
-      const parsePoints = (nodes, tag) => {
-        const pts = [];
-        nodes.forEach(seg => {
-          Array.from(seg.getElementsByTagNameNS(ns, tag)).forEach(pt => {
-            const lat = parseFloat(pt.getAttribute('lat'));
-            const lng = parseFloat(pt.getAttribute('lon'));
-            if (isNaN(lat)||isNaN(lng)) return;
-            const ll  = L.latLng(lat, lng);
-            const eleEl = pt.getElementsByTagNameNS(ns,'ele')[0];
-            ll.ele = eleEl ? parseFloat(eleEl.textContent) : null;
-            pts.push(ll);
-          });
-        });
-        return pts;
-      };
-
-      // Try track first (trkpt), then route (rtept), then waypoints (wpt)
-      let pts = [], importType = '';
-      const trksegs = Array.from(xml.getElementsByTagNameNS(ns,'trkseg'));
-      if (trksegs.length) {
-        pts = parsePoints(trksegs, 'trkpt');
-        importType = 'seuranta';
+function importGPX(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const xml=new DOMParser().parseFromString(e.target.result,'application/xml');
+      const ns='http://www.topografix.com/GPX/1/1';
+      const parsePts=(nodes,tag)=>{const pts=[];nodes.forEach(seg=>Array.from(seg.getElementsByTagNameNS(ns,tag)).forEach(pt=>{const lat=parseFloat(pt.getAttribute('lat')),lng=parseFloat(pt.getAttribute('lon'));if(isNaN(lat)||isNaN(lng))return;const ll=L.latLng(lat,lng);const el=pt.getElementsByTagNameNS(ns,'ele')[0];ll.ele=el?parseFloat(el.textContent):null;pts.push(ll);}));return pts;};
+      let pts=[],isTrk=false;
+      const segs=Array.from(xml.getElementsByTagNameNS(ns,'trkseg'));
+      if(segs.length){pts=parsePts(segs,'trkpt');isTrk=true;}
+      if(!pts.length){const rtes=Array.from(xml.getElementsByTagNameNS(ns,'rte'));if(rtes.length)pts=parsePts(rtes,'rtept');}
+      if(!pts.length){pts=parsePts([xml.documentElement],'wpt');}
+      if(!pts.length){showToast('⚠️ Ei pisteitä');return;}
+      if(isTrk||pts.length>50){
+        trackLine=removeLayer(trackLine);trackPts=pts;
+        trackLine=L.polyline(pts,{color:'#3478f6',weight:4,opacity:.85,lineJoin:'round',lineCap:'round'}).addTo(map);
+        map.fitBounds(trackLine.getBounds(),{padding:[30,30]});
+        document.getElementById('btnExportTrack').style.display='';
+      }else{
+        saveState();waypoints=pts;wpTypes=pts.map(()=>'drawn');redraw();
+        if(segLines.length)map.fitBounds(segLines[0].getBounds(),{padding:[30,30]});
       }
-      if (!pts.length) {
-        const rtes = Array.from(xml.getElementsByTagNameNS(ns,'rte'));
-        if (rtes.length) { pts = parsePoints(rtes, 'rtept'); importType = 'reitti'; }
-      }
-      if (!pts.length) {
-        // Standalone waypoints
-        const wptContainer = [xml.documentElement];
-        pts = parsePoints(wptContainer, 'wpt');
-        importType = 'reittipisteet';
-      }
-
-      if (!pts.length) { showToast('⚠️ GPX-tiedostossa ei löydy pisteitä'); return; }
-
-      // Detect: if many points → treat as recorded track (blue line)
-      // If few points → treat as planned route (gold line with markers)
-      const isTrack = pts.length > 50 || importType === 'seuranta';
-
-      if (isTrack) {
-        // Load as GPS track
-        if (trackLine) { map.removeLayer(trackLine); trackLine = null; }
-        trackPts = pts;
-        trackLine = L.polyline(trackPts, {color:'#3478f6',weight:4,opacity:0.85,lineJoin:'round',lineCap:'round'}).addTo(map);
-        document.getElementById('btnExportTrack').style.display = '';
-        // Compute ascent/descent from GPX ele data
-        const eles = pts.map(p => p.ele).filter(e => e !== null);
-        if (eles.length > 1) {
-          let up=0, down=0;
-          for (let i=1;i<pts.length;i++) {
-            if (pts[i].ele==null||pts[i-1].ele==null) continue;
-            const d = pts[i].ele - pts[i-1].ele;
-            if (d>0) up+=d; else down+=Math.abs(d);
-          }
-          document.getElementById('statUp').textContent   = '+'+Math.round(up)+'m';
-          document.getElementById('statDown').textContent = '-'+Math.round(down)+'m';
-          document.getElementById('statEle').textContent  = Math.round(pts[0].ele)+' m';
-        }
-      } else {
-        // Load as planned route with markers — populate elevations from GPX ele if present
-        clearRoute();
-        pts.forEach(ll => addWaypoint(ll));
-        const gpxEles = pts.map(p => p.ele);
-        if (gpxEles.some(e => e !== null)) {
-          routeElevations = gpxEles;
-          updateStats(); // recalc with Tobler immediately
-        }
-      }
-
-      // Get name from GPX metadata or track/route name
-      const nameEl = xml.querySelector('name') || xml.getElementsByTagNameNS(ns,'name')[0];
-      const gpxName = nameEl ? nameEl.textContent.trim() : file.name.replace('.gpx','');
-
-      map.fitBounds(isTrack ? trackLine.getBounds() : routeLine?.getBounds() ?? map.getBounds(), {padding:[30,30]});
-      showToast(`📂 Avattu: ${gpxName} (${pts.length} pistettä)`);
-    } catch(err) {
-      showToast('⚠️ GPX-tiedoston lukeminen epäonnistui');
-    }
-    // Reset input so same file can be reopened
-    event.target.value = '';
+      const nm=xml.querySelector('name');showToast(`📂 ${nm?nm.textContent.trim():file.name} (${pts.length} pistettä)`);
+    }catch(err){showToast('⚠️ GPX-virhe');}
+    event.target.value='';
   };
   reader.readAsText(file);
 }
-function clearRoute() {
-  waypoints=[]; markers.forEach(m=>m.remove()); markers=[];
-  routeElevations=[]; plannedRoute=[]; elevationReady=false;
-  clearTimeout(eleTimer);
-  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
-  if(planLine){map.removeLayer(planLine);planLine=null;}
-  clearGapFill(); hidePlanGhost();
-  trackPts=[];
-  if(trackLine){map.removeLayer(trackLine);trackLine=null;}
-  clearTrackStorage();
-  document.getElementById('btnExportTrack').style.display='none';
-  document.getElementById('btnExportRoute').style.display='none';
-  document.getElementById('statUp').textContent='– m';
-  document.getElementById('statDown').textContent='– m';
-  document.getElementById('statEle').textContent='– m';
-  updateStats();
-  showToast('Kartta tyhjennetty');
-}
 
+// ═══════════════════════════════════════════════════════════
+// SERVICE WORKER & WAKE LOCK
+// ═══════════════════════════════════════════════════════════
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
 let toastTimer;
-function showToast(msg) {
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
-}
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2500);}
 
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+loadTrack();
 showToast('Tervetuloa Retkikarttaan! 🌲');
-loadTrackFromStorage();
 </script>
 
 </body>
