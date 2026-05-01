@@ -513,7 +513,6 @@ function toggleDrawing() {
 map.on('click', e => { if (drawing) addWaypoint(e.latlng); });
 
 function addWaypoint(latlng) {
-  elevationReady = false; // new point added — re-fetch elevation
   waypoints.push(latlng);
   const isFirst = waypoints.length === 1;
   const s = isFirst?18:14, a=s/2;
@@ -532,7 +531,7 @@ function undoLast() {
 }
 
 function clearRoute() {
-  // Clear planned route
+  clearTimeout(eleTimer);
   waypoints=[]; markers.forEach(m=>m.remove()); markers=[];
   routeElevations = [];
   if(routeLine){map.removeLayer(routeLine);routeLine=null;}
@@ -560,6 +559,9 @@ function updateRoute() {
   if (waypoints.length > 1) {
     routeLine = L.polyline(waypoints, { color:'#b07d2a', weight:4, opacity:0.9, lineJoin:'round', lineCap:'round' }).addTo(map);
   }
+  // Debounce elevation fetch for manually drawn routes
+  clearTimeout(eleTimer);
+  if (waypoints.length > 0) eleTimer = setTimeout(fetchRouteElevation, 1000);
   updateStats();
 }
 
@@ -671,13 +673,10 @@ async function buildRoute(pts) {
       document.getElementById('statDown').textContent = '-'+descend+'m';
     }
 
-    // Set elevation array — if GH didn't return ele, fetch from Open-Meteo
+    // Set elevation array and fetch from Open-Meteo
     routeElevations = plannedRoute.map(p => p.ele);
-    if (routeElevations.every(e => e === null)) {
-      fetchRouteElevation(); // async, updates stats when done
-    }
-
     updateStats();
+    setTimeout(fetchRouteElevation, 500); // slight delay to let map render first
     document.getElementById('btnExportRoute').style.display = '';
     showToast(`🧭 Reitti löydetty — ${(path.distance/1000).toFixed(2)} km`);
   } catch(err) {
@@ -809,14 +808,12 @@ function formatMins(mins) {
 // Route elevation profile state
 let routeElevations = []; // parallel array to waypoints
 let eleTimer = null;
-let elevationReady = false; // true when elevation has been successfully fetched
 
 function updateStats() {
   let dist = 0;
   for (let i=1; i<waypoints.length; i++) dist += haversine(waypoints[i-1], waypoints[i]);
   document.getElementById('statDist').textContent = dist<1?(dist*1000).toFixed(0)+' m':dist.toFixed(2)+' km';
 
-  // If we have elevation profile matching waypoints, use Tobler
   const baseSpeed = withDog ? SPEED.dog : SPEED.normal;
   if (routeElevations.length === waypoints.length && waypoints.length > 1) {
     const mins = computeToblerTime(waypoints, routeElevations, baseSpeed);
@@ -840,18 +837,11 @@ function updateStats() {
     }
   }
 
-  // Show/hide export buttons
   document.getElementById('btnExportRoute').style.display = waypoints.length>1 ? '' : 'none';
   document.getElementById('btnExportTrack').style.display = trackPts.length>1  ? '' : 'none';
-
-  // Only fetch elevation if not already fetched for current route
-  if (waypoints.length > 0 && !elevationReady) {
-    clearTimeout(eleTimer);
-    eleTimer = setTimeout(fetchRouteElevation, 900);
-  }
 }
 
-// Fetch elevation for ALL waypoints in one API call
+// Fetch elevation and update display — called once per route, never calls updateStats
 async function fetchRouteElevation() {
   if (waypoints.length === 0) return;
   try {
@@ -868,7 +858,6 @@ async function fetchRouteElevation() {
       }
     }
 
-    // Use POST to avoid URL length limits with many coordinates
     const lats = sampled.map(({p}) => parseFloat(p.lat.toFixed(5)));
     const lngs = sampled.map(({p}) => parseFloat(p.lng.toFixed(5)));
     const r = await fetch('https://api.open-meteo.com/v1/elevation', {
@@ -882,14 +871,9 @@ async function fetchRouteElevation() {
     const elevs = j.elevation;
     if (!elevs || elevs.length !== sampled.length) throw new Error('Bad response');
 
-    // Map sampled elevations back to all waypoints
+    // Map back to all waypoints with interpolation
     routeElevations = new Array(pts.length).fill(null);
-    sampled.forEach(({i}, si) => {
-      routeElevations[i] = elevs[si];
-      if (waypoints[i]) waypoints[i].ele = elevs[si];
-    });
-
-    // Linear interpolation between sampled points
+    sampled.forEach(({i}, si) => { routeElevations[i] = elevs[si]; });
     for (let i=0; i<pts.length; i++) {
       if (routeElevations[i] !== null) continue;
       const prev = sampled.filter(s => s.i <= i).pop();
@@ -904,22 +888,23 @@ async function fetchRouteElevation() {
       }
     }
 
-    // Compute ascent/descent from elevation profile
-    let up = 0, down = 0;
-    for (let i=1; i<routeElevations.length; i++) {
-      const d = (routeElevations[i] ?? 0) - (routeElevations[i-1] ?? 0);
-      if (d > 0) up += d; else down += Math.abs(d);
-    }
-    if (up > 0 || down > 0) {
-      document.getElementById('statUp').textContent   = '+' + Math.round(up)   + 'm';
-      document.getElementById('statDown').textContent = '-' + Math.round(down) + 'm';
-    }
-
+    // Update display directly — no updateStats call
     const lastEle = routeElevations[routeElevations.length-1];
     if (lastEle !== null) document.getElementById('statEle').textContent = Math.round(lastEle)+' m';
-    elevationReady = true;
-    // Recalculate time with Tobler — safe to call now, elevationReady prevents re-fetch
-    updateStats();
+
+    // Recompute time and ascent/descent with Tobler
+    const baseSpeed = withDog ? SPEED.dog : SPEED.normal;
+    const mins = computeToblerTime(waypoints, routeElevations, baseSpeed);
+    document.getElementById('statTime').textContent = formatMins(mins);
+
+    let up=0, down=0;
+    for (let i=1; i<routeElevations.length; i++) {
+      const d = (routeElevations[i]??0) - (routeElevations[i-1]??0);
+      if (d>0) up+=d; else down+=Math.abs(d);
+    }
+    document.getElementById('statUp').textContent   = up>0   ? '+'+Math.round(up)+'m'   : '0 m';
+    document.getElementById('statDown').textContent = down>0 ? '-'+Math.round(down)+'m' : '0 m';
+
   } catch(e) {
     showToast('⚠️ Korkeustietoa ei saatu');
   }
