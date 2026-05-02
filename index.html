@@ -43,17 +43,21 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 /* ── SHARED PILL ── */
 .pill { position:absolute; background:rgba(255,255,255,.95); border:1px solid var(–border); border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.13); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); overflow:hidden; z-index:500; }
 
-/* ── LEFT STACK (GPS) — bottom left ── */
-#stackGps { left:12px; bottom:185px; display:flex; flex-direction:column; }
-.ico-btn { width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; background:none; border:none; border-bottom:1px solid var(–border); cursor:pointer; transition:background .12s; }
-.ico-btn:last-child { border-bottom:none; }
-.ico-btn:active { background:var(–bg); }
-.ico-btn.trk-on { background:var(–blue)!important; animation:tpulse 1.5s infinite; }
+/* ── SHARED TOGGLE BUTTON ── */
+.toggle-btn { width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; background:none; border:none; cursor:pointer; }
+.collapse-menu { display:none; flex-direction:column; }
+.collapse-menu.open { display:flex; }
+
+/* ── GPS STACK — bottom left ── */
+#stackGps { left:12px; bottom:12px; display:flex; flex-direction:column; }
+#gpsMenu .ico-btn { width:auto; min-width:140px; padding:9px 13px; justify-content:flex-start; gap:8px; font-size:.75rem; font-weight:500; color:var(–text2); border-bottom:none; border-top:1px solid var(–border); }
+#gpsMenu .ico-btn:last-child { border-top:1px solid var(–border); }
+.ico-btn.trk-on { background:var(–blue)!important; color:#fff!important; animation:tpulse 1.5s infinite; }
 @keyframes tpulse { 0%,100%{box-shadow:0 0 0 0 rgba(52,120,246,.4)} 50%{box-shadow:0 0 0 8px rgba(52,120,246,0)} }
 
-/* ── LAYER PILL — below zoom buttons, left ── */
-#stackLayer { left:12px; top:100px; }
-.layer-toggle { width:44px; height:44px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; background:none; border:none; cursor:pointer; }
+/* ── LAYER PILL — top left, right of zoom ── */
+#stackLayer { left:90px; top:12px; }
+.layer-toggle { width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; background:none; border:none; cursor:pointer; }
 .layer-menu { display:none; flex-direction:column; }
 .layer-menu.open { display:flex; }
 .lbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(–border); cursor:pointer; white-space:nowrap; color:var(–text); transition:background .12s; }
@@ -62,15 +66,14 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 .ldot { width:7px; height:7px; border-radius:50%; background:var(–border); flex-shrink:0; }
 .lbtn.active .ldot { background:var(–green); }
 
-/* ── MODE STACK — top right ── */
-#stackMode { right:12px; top:12px; display:flex; flex-direction:column; }
-.mbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-bottom:1px solid var(–border); cursor:pointer; white-space:nowrap; color:var(–text2); transition:background .12s; min-width:115px; }
-.mbtn:last-child { border-bottom:none; }
+/* ── MODE STACK — top left, right of layer ── */
+#stackMode { left:148px; top:12px; display:flex; flex-direction:column; }
+.mbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(–border); cursor:pointer; white-space:nowrap; color:var(–text2); transition:background .12s; min-width:115px; }
 .mbtn:active { background:var(–bg); }
 .mbtn.active { background:var(–green-lt); color:var(–green); font-weight:600; }
 
-/* ── SPEED MODAL — below mode stack, right ── */
-#speedModal { position:absolute; right:12px; top:148px; z-index:501; background:var(–surface); border:1px solid var(–border); border-radius:14px; padding:13px 15px; box-shadow:0 4px 16px rgba(0,0,0,.15); display:none; min-width:175px; }
+/* ── SPEED MODAL — below mode, left ── */
+#speedModal { position:absolute; left:148px; top:70px; z-index:501; background:var(–surface); border:1px solid var(–border); border-radius:14px; padding:13px 15px; box-shadow:0 4px 16px rgba(0,0,0,.15); display:none; min-width:175px; }
 #speedModal.visible { display:block; }
 #speedModal label { font-size:.68rem; font-weight:600; color:var(–text2); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:7px; }
 .speed-row { display:flex; align-items:center; gap:8px; }
@@ -78,9 +81,9 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 .speed-val { font-size:.88rem; font-weight:600; color:var(–green); min-width:48px; text-align:right; }
 
 /* ── ACTION STACK — bottom right ── */
-#stackAction { right:12px; bottom:185px; display:flex; flex-direction:column; min-width:148px; }
-.abtn { display:flex; align-items:center; gap:9px; padding:10px 14px; font-family:inherit; font-size:.76rem; font-weight:500; background:none; border:none; border-bottom:1px solid var(–border); cursor:pointer; white-space:nowrap; color:var(–text2); transition:background .12s; }
-.abtn:last-child { border-bottom:none; }
+#stackAction { right:12px; bottom:12px; display:flex; flex-direction:column; }
+#stackAction > .toggle-btn { width:46px; }
+.abtn { display:flex; align-items:center; gap:9px; padding:10px 14px; font-family:inherit; font-size:.76rem; font-weight:500; background:none; border:none; border-top:1px solid var(–border); cursor:pointer; white-space:nowrap; color:var(–text2); transition:background .12s; }
 .abtn:active { background:var(–bg); }
 .abtn .ai { font-size:.95rem; width:20px; text-align:center; }
 .abtn.a-draw  { background:var(–green-lt)!important; color:var(–green)!important; font-weight:600; }
@@ -161,12 +164,15 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
     </div>
   </div>
 
-  <!-- MODE STACK -->
+  <!-- MODE STACK — collapsed, top right -->
 
   <div class="pill" id="stackMode">
-    <button class="mbtn active" id="modeWalk" onclick="setMode('walk')">🚶 Kävely</button>
-    <button class="mbtn"        id="modeDog"  onclick="setMode('dog')"> 🐕 Koira</button>
-    <button class="mbtn"        id="modeRun"  onclick="setMode('run')"> 🏃 Juoksu</button>
+    <button class="toggle-btn" id="modeToggle" onclick="toggleModeMenu()">🚶</button>
+    <div class="collapse-menu" id="modeMenu">
+      <button class="mbtn active" id="modeWalk" onclick="setMode('walk')">🚶 Kävely</button>
+      <button class="mbtn"        id="modeDog"  onclick="setMode('dog')"> 🐕 Koira</button>
+      <button class="mbtn"        id="modeRun"  onclick="setMode('run')"> 🏃 Juoksu</button>
+    </div>
   </div>
 
   <!-- SPEED MODAL -->
@@ -179,26 +185,32 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
     </div>
   </div>
 
-  <!-- GPS STACK (left) -->
+  <!-- GPS STACK — collapsed, bottom left -->
 
   <div class="pill" id="stackGps">
-    <button class="ico-btn" id="fabTrack" onclick="toggleTracking()" title="GPS">🛰️</button>
-    <button class="ico-btn" onclick="locateOnce()"                   title="Sijaintini">📍</button>
-    <button class="ico-btn" onclick="undoLast()"                     title="Kumoa">↩️</button>
-    <button class="ico-btn" onclick="clearAll()" style="color:var(--red)" title="Tyhjennä">🗑️</button>
+    <button class="toggle-btn" onclick="toggleGpsMenu()">🛰️</button>
+    <div class="collapse-menu" id="gpsMenu">
+      <button class="ico-btn" id="fabTrack" onclick="toggleTracking()">🛰️ GPS-seuranta</button>
+      <button class="ico-btn" onclick="locateOnce()">📍 Sijaintini</button>
+      <button class="ico-btn" onclick="undoLast()">↩️ Kumoa</button>
+      <button class="ico-btn" onclick="clearAll()" style="color:var(--red)">🗑️ Tyhjennä</button>
+    </div>
   </div>
 
-  <!-- ACTION STACK (right) -->
+  <!-- ACTION STACK — collapsed, bottom right -->
 
   <div class="pill" id="stackAction">
-    <button class="abtn a-draw" id="btnDraw"      onclick="toggleDrawing()"><span class="ai">✏️</span>Piirrä pisteitä</button>
-    <button class="abtn"        id="btnFreehand"  onclick="toggleFreehand()"><span class="ai">🖊️</span>Vapaa piirto</button>
-    <button class="abtn"        id="btnRoute"     onclick="toggleRouting()"><span class="ai">🧭</span>Reititä</button>
-    <button class="abtn"        id="btnCloseLoop" onclick="closeLoop()"    style="display:none"><span class="ai">🔄</span>Sulje ympyrä</button>
-    <button class="abtn"        id="btnConfirm"   onclick="confirmRoute()" style="display:none"><span class="ai">✅</span>Valmis</button>
-    <button class="abtn" onclick="document.getElementById('gpxInput').click()"><span class="ai">📂</span>Avaa GPX</button>
-    <button class="abtn" id="btnExpTrack" onclick="exportGPX('track')" style="display:none"><span class="ai">⬇️</span>Vie tallenne</button>
-    <button class="abtn" id="btnExpRoute" onclick="exportGPX('route')" style="display:none"><span class="ai">⬇️</span>Vie reitti</button>
+    <button class="toggle-btn" onclick="toggleActionMenu()">✏️</button>
+    <div class="collapse-menu" id="actionMenu">
+      <button class="abtn a-draw" id="btnDraw"      onclick="toggleDrawing()"><span class="ai">✏️</span>Piirrä pisteitä</button>
+      <button class="abtn"        id="btnFreehand"  onclick="toggleFreehand()"><span class="ai">🖊️</span>Vapaa piirto</button>
+      <button class="abtn"        id="btnRoute"     onclick="toggleRouting()"><span class="ai">🧭</span>Reititä</button>
+      <button class="abtn"        id="btnCloseLoop" onclick="closeLoop()"    style="display:none"><span class="ai">🔄</span>Sulje ympyrä</button>
+      <button class="abtn"        id="btnConfirm"   onclick="confirmRoute()" style="display:none"><span class="ai">✅</span>Valmis</button>
+      <button class="abtn" onclick="document.getElementById('gpxInput').click()"><span class="ai">📂</span>Avaa GPX</button>
+      <button class="abtn" id="btnExpTrack" onclick="exportGPX('track')" style="display:none"><span class="ai">⬇️</span>Vie tallenne</button>
+      <button class="abtn" id="btnExpRoute" onclick="exportGPX('route')" style="display:none"><span class="ai">⬇️</span>Vie reitti</button>
+    </div>
   </div>
   <input type="file" id="gpxInput" accept=".gpx,.xml,*/*" style="display:none" onchange="importGPX(event)">
 
@@ -255,13 +267,21 @@ const LAYERS = {
   hiking:    L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',{maxZoom:19,opacity:.8})
 };
 const BASE = ['osm','mml','topo','satellite','ortho'];
-let activeBase='osm', hikeOn=false, layerMenuOpen=false;
+let activeBase='osm', hikeOn=false;
+let layerMenuOpen=false, modeMenuOpen=false, gpsMenuOpen=false, actionMenuOpen=false;
+
+function closeAllMenus() {
+  if (layerMenuOpen)  { layerMenuOpen=false;  document.getElementById('layerMenu').classList.remove('open'); }
+  if (modeMenuOpen)   { modeMenuOpen=false;   document.getElementById('modeMenu').classList.remove('open'); }
+  if (gpsMenuOpen)    { gpsMenuOpen=false;    document.getElementById('gpsMenu').classList.remove('open'); }
+  if (actionMenuOpen) { actionMenuOpen=false; document.getElementById('actionMenu').classList.remove('open'); }
+}
+function toggleLayerMenu()  { const o=layerMenuOpen;  closeAllMenus(); layerMenuOpen =!o; document.getElementById('layerMenu').classList.toggle('open',layerMenuOpen); }
+function toggleModeMenu()   { const o=modeMenuOpen;   closeAllMenus(); modeMenuOpen  =!o; document.getElementById('modeMenu').classList.toggle('open',modeMenuOpen); }
+function toggleGpsMenu()    { const o=gpsMenuOpen;    closeAllMenus(); gpsMenuOpen   =!o; document.getElementById('gpsMenu').classList.toggle('open',gpsMenuOpen); }
+function toggleActionMenu() { const o=actionMenuOpen; closeAllMenus(); actionMenuOpen=!o; document.getElementById('actionMenu').classList.toggle('open',actionMenuOpen); }
 LAYERS.osm.addTo(map);
 
-function toggleLayerMenu() {
-  layerMenuOpen = !layerMenuOpen;
-  document.getElementById('layerMenu').classList.toggle('open', layerMenuOpen);
-}
 function setLayer(name) {
   if (name==='hiking') {
     hikeOn=!hikeOn;
@@ -276,7 +296,7 @@ function setLayer(name) {
   if (hikeOn) LAYERS.hiking.bringToFront();
   activeBase=name;
   BASE.forEach(l=>document.getElementById('lbtn-'+l).classList.toggle('active',l===name));
-  layerMenuOpen=false; document.getElementById('layerMenu').classList.remove('open');
+  closeAllMenus();
   if (waypoints.length>1) redraw();
   showToast({osm:'🗺️ OpenStreetMap',mml:'🇫🇮 MML Maastokartta',topo:'🏔️ Topokartta',satellite:'🛸 Satelliitti',ortho:'📷 MML Ortoilmakuva'}[name]);
 }
@@ -293,13 +313,18 @@ function routeColor() {
 const SPEEDS = { walk:4.5, dog:3.5, run:9.0 };
 let currentMode = 'walk';
 
+const MODE_ICONS = { walk:'🚶', dog:'🐕', run:'🏃' };
+
 function setMode(m) {
   currentMode = m;
   ['walk','dog','run'].forEach(id=>{
     const el = document.getElementById('mode'+id.charAt(0).toUpperCase()+id.slice(1));
     if (el) el.classList.toggle('active', id===m);
   });
+  // Update toggle button icon to show active mode
+  document.getElementById('modeToggle').textContent = MODE_ICONS[m];
   document.getElementById('speedModal').classList.toggle('visible', m==='run');
+  closeAllMenus();
   updateStats();
   showToast({walk:'🚶 Kävelytila',dog:'🐕 Koiratila',run:'🏃 Juoksutila'}[m]);
 }
@@ -387,7 +412,7 @@ function stopDraw() {
   map.getContainer().style.cursor='';
 }
 
-map.on('click', e=>{ if(drawing) addPt(e.latlng,'drawn'); else if(routing) addRoutePoint(e.latlng); });
+map.on('click', e=>{ closeAllMenus(); if(drawing) addPt(e.latlng,'drawn'); else if(routing) addRoutePoint(e.latlng); });
 
 function addPt(ll, type) {
   saveState(); waypoints.push(ll); wpTypes.push(type); redraw();
