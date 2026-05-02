@@ -1,7 +1,9 @@
-const CACHE = ‘retkikartta-v1’;
+const CACHE = ‘retkikartta-v3’;
 const PRECACHE = [
 ‘/’,
 ‘/index.html’,
+‘/style.css’,
+‘/app.js’,
 ‘https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css’,
 ‘https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js’,
 ‘https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap’
