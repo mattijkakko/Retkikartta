@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fi">
 <head>
 <meta charset="UTF-8">
@@ -7,120 +7,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Retkikartta">
 <meta name="theme-color" content="#ffffff">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="/manifest.json">
 <title>Retkikartta</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<header>
-  <div class="logo">🌲 Retki <em>kartta</em></div>
-</header>
-
-<div id="mapwrap">
-  <div id="map"></div>
-
-  <!-- LAYER PILL -->
-  <div class="pill" id="stackLayer">
-    <button class="layer-toggle" onclick="toggleLayerMenu()" title="Karttapohja">🗺️</button>
-    <div class="layer-menu" id="layerMenu">
-      <button class="lbtn active" id="lbtn-osm"       onclick="setLayer('osm')">       <span class="ldot"></span>OpenStreetMap</button>
-      <button class="lbtn"        id="lbtn-mml"       onclick="setLayer('mml')">       <span class="ldot"></span>MML Maasto</button>
-      <button class="lbtn"        id="lbtn-topo"      onclick="setLayer('topo')">      <span class="ldot"></span>Topokartta</button>
-      <button class="lbtn"        id="lbtn-satellite" onclick="setLayer('satellite')"> <span class="ldot"></span>Satelliitti</button>
-      <button class="lbtn"        id="lbtn-ortho"     onclick="setLayer('ortho')">     <span class="ldot"></span>MML Ilmakuva</button>
-      <button class="lbtn"        id="lbtn-hiking"    onclick="setLayer('hiking')">    <span class="ldot"></span>+ Reitit</button>
-    </div>
-  </div>
-
-  <!-- MODE STACK -->
-  <div class="pill" id="stackMode">
-    <button class="toggle-btn" id="modeToggle" onclick="toggleModeMenu()">🚶</button>
-    <div class="collapse-menu" id="modeMenu">
-      <button class="mbtn active" id="modeWalk" onclick="setMode('walk')">🚶 Kävely</button>
-      <button class="mbtn"        id="modeDog"  onclick="setMode('dog')"> 🐕 Koira</button>
-      <button class="mbtn"        id="modeRun"  onclick="setMode('run')"> 🏃 Juoksu</button>
-      <div id="speedPanel">
-        <div class="speed-label">Juoksuvauhti tasamaalla</div>
-        <div class="speed-row">
-          <input type="range" id="runSpeed" min="4" max="20" step="0.5" value="9" oninput="onSpeedChange()">
-          <span class="speed-val" id="runSpeedVal">9.0 km/h</span>
-        </div>
-      </div>
-      <div class="cond-divider">Maasto-olosuhteet</div>
-      <button class="mbtn cond active" id="cond-summer" onclick="setCond('summer')">☀️ Kesä / kuiva</button>
-      <button class="mbtn cond"        id="cond-autumn" onclick="setCond('autumn')">🍂 Syksy / märkä</button>
-      <button class="mbtn cond"        id="cond-crust"  onclick="setCond('crust')"> ❄️ Talvi / hanki</button>
-      <button class="mbtn cond"        id="cond-snow30" onclick="setCond('snow30')">🌨️ Lumi &lt;30 cm</button>
-      <button class="mbtn cond"        id="cond-snow60" onclick="setCond('snow60')">🌨️ Lumi &gt;30 cm</button>
-    </div>
-  </div>
-
-  <!-- GPS STACK -->
-  <div class="pill" id="stackGps">
-    <button class="toggle-btn" onclick="toggleGpsMenu()">🛰️</button>
-    <div class="collapse-menu" id="gpsMenu">
-      <button class="ico-btn" id="fabTrack" onclick="toggleTracking()">🛰️ GPS-seuranta</button>
-      <button class="ico-btn" onclick="locateOnce()">📍 Sijaintini</button>
-      <button class="ico-btn" onclick="undoLast()">↩️ Kumoa</button>
-      <button class="ico-btn" onclick="clearAll()" style="color:var(--red)">🗑️ Tyhjennä</button>
-    </div>
-  </div>
-
-  <!-- ACTION STACK -->
-  <div class="pill" id="stackAction">
-    <button class="toggle-btn" onclick="toggleActionMenu()">✏️</button>
-    <div class="collapse-menu" id="actionMenu">
-      <button class="abtn a-draw" id="btnDraw"      onclick="toggleDrawing()"><span class="ai">✏️</span>Piirrä pisteitä</button>
-      <button class="abtn"        id="btnFreehand"  onclick="toggleFreehand()"><span class="ai">🖊️</span>Vapaa piirto</button>
-      <button class="abtn"        id="btnRoute"     onclick="toggleRouting()"><span class="ai">🧭</span>Reititä</button>
-      <button class="abtn"        id="btnCloseLoop" onclick="closeLoop()"    style="display:none"><span class="ai">🔄</span>Sulje ympyrä</button>
-      <button class="abtn"        id="btnConfirm"   onclick="confirmRoute()" style="display:none"><span class="ai">✅</span>Valmis</button>
-      <button class="abtn" onclick="document.getElementById('gpxInput').click()"><span class="ai">📂</span>Avaa GPX</button>
-      <button class="abtn" id="btnExpTrack" onclick="exportGPX('track')" style="display:none"><span class="ai">⬇️</span>Vie tallenne</button>
-      <button class="abtn" id="btnExpRoute" onclick="exportGPX('route')" style="display:none"><span class="ai">⬇️</span>Vie reitti</button>
-    </div>
-  </div>
-  <input type="file" id="gpxInput" accept=".gpx,.xml,*/*" style="display:none" onchange="importGPX(event)">
-
-  <!-- INDICATORS -->
-  <div id="drawInd"  class="indicator">✏️ Napauta karttaan lisätäksesi pisteitä</div>
-  <div id="freeInd"  class="indicator">🖊️ Piirrä sormella — vapauta lopettaaksesi</div>
-  <div id="routeInd" class="indicator route-ind-wrap">
-    <span id="routeIndText">🧭 Napauta lähtöpiste kartalle</span>
-    <button id="btnUseLocation" onclick="useLocationAsStart()">📍 Sijaintini</button>
-  </div>
-
-  <!-- TRACK OVERLAY -->
-  <div id="trackOverlay">
-    <div class="ttitle"><div class="ldot2"></div> Live-seuranta</div>
-    <div class="trow"><span>Kuljettu</span><span id="trkDist">0 m</span></div>
-    <div class="trow"><span>Aika</span><span id="trkTime">0:00</span></div>
-    <div class="trow"><span>Nopeus</span><span id="trkSpeed">0.0 km/h</span></div>
-    <div class="trow"><span>Tarkkuus</span><span id="trkAcc">–</span></div>
-  </div>
-
-  <button id="centerToggle" onclick="toggleCenter()">🔒 Seuraa sijaintia</button>
-
-  <div id="spinner"><span class="spin">⏳</span> Haetaan reittiä…</div>
-  <div id="toast"></div>
-</div>
-
-<div class="stats-panel">
-  <div class="stats-row">
-    <div class="stat-card"><div class="sv" id="statDist">0 km</div><div class="sl">Pituus</div></div>
-    <div class="stat-card"><div class="sv" id="statTime">0 min</div><div class="sl">Arvioitu aika</div></div>
-  </div>
-  <div class="stats-row2">
-    <div class="stat-card"><div class="sv" id="statUp">– m</div><div class="sl">⬆ Nousu</div></div>
-    <div class="stat-card"><div class="sv" id="statDown">– m</div><div class="sl">⬇ Lasku</div></div>
-    <div class="stat-card"><div class="sv" id="statEle">– m</div><div class="sl">Korkeus nyt</div></div>
-  </div>
-</div>
-
-<script src="app.js"></script>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

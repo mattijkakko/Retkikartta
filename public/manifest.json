@@ -2,7 +2,7 @@
   "name": "Retkikartta",
   "short_name": "Retkikartta",
   "description": "Kävely- ja retkireittien suunnittelu ja seuranta",
-  "start_url": "/",
+  "start_url": "/Retkikartta/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
