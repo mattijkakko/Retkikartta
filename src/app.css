@@ -1,0 +1,128 @@
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --bg:#f2f2f7; --surface:#fff; --border:#e0e0e5;
+  --text:#1c1c1e; --text2:#6c6c70;
+  --green:#347a3f; --green-lt:#e8f4ea;
+  --blue:#3478f6; --blue-lt:#e8f0fe;
+  --red:#d32f2f; --gold:#b07d2a; --radius:12px;
+}
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── HEADER ── */
+header { background:var(--surface); padding:10px 16px; display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0; z-index:1000; }
+.logo { font-size:1.1rem; font-weight:600; letter-spacing:-0.02em; display:flex; align-items:center; gap:6px; }
+.logo em { font-style:italic; font-weight:300; color:var(--text2); }
+
+/* ── MAP WRAPPER ── */
+#mapwrap { position:relative; flex:1; overflow:hidden; }
+#map { width:100%; height:100%; }
+
+/* ── LEAFLET OVERRIDES ── */
+.leaflet-control-zoom { border:none!important; box-shadow:0 2px 8px rgba(0,0,0,.12)!important; border-radius:10px!important; overflow:hidden; }
+.leaflet-control-zoom a { background:var(--surface)!important; color:var(--text)!important; border:none!important; border-bottom:1px solid var(--border)!important; font-size:1.1rem!important; line-height:32px!important; width:32px!important; height:32px!important; }
+.leaflet-control-zoom-out { border-bottom:none!important; }
+.leaflet-control-zoom a:hover { background:var(--bg)!important; }
+.leaflet-control-attribution { display:none!important; }
+
+/* ── SHARED PILL ── */
+.pill { position:absolute; background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.13); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); overflow:hidden; z-index:500; }
+
+/* ── SHARED TOGGLE BUTTON ── */
+.toggle-btn { width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; background:none; border:none; cursor:pointer; }
+.collapse-menu { display:none; flex-direction:column; }
+.collapse-menu.open { display:flex; }
+
+/* ── GPS STACK — bottom left ── */
+#stackGps { left:12px; bottom:12px; display:flex; flex-direction:column; }
+#gpsMenu .ico-btn { width:auto; min-width:140px; padding:9px 13px; justify-content:flex-start; gap:8px; font-size:.75rem; font-weight:500; color:var(--text2); border-bottom:none; border-top:1px solid var(--border); }
+#gpsMenu .ico-btn:last-child { border-top:1px solid var(--border); }
+.ico-btn.trk-on { background:var(--blue)!important; color:#fff!important; animation:tpulse 1.5s infinite; }
+@keyframes tpulse { 0%,100%{box-shadow:0 0 0 0 rgba(52,120,246,.4)} 50%{box-shadow:0 0 0 8px rgba(52,120,246,0)} }
+
+/* ── LAYER PILL — top left, right of zoom ── */
+#stackLayer { left:90px; top:12px; }
+.layer-toggle { width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; background:none; border:none; cursor:pointer; }
+.layer-menu { display:none; flex-direction:column; }
+.layer-menu.open { display:flex; }
+.lbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--text); transition:background .12s; }
+.lbtn:active { background:var(--bg); }
+.lbtn.active { color:var(--green); font-weight:600; }
+.ldot { width:7px; height:7px; border-radius:50%; background:var(--border); flex-shrink:0; }
+.lbtn.active .ldot { background:var(--green); }
+
+/* ── MODE STACK — top left, right of layer ── */
+#stackMode { left:148px; top:12px; display:flex; flex-direction:column; }
+.mbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--text2); transition:background .12s; min-width:115px; }
+.mbtn:active { background:var(--bg); }
+.mbtn.active { background:var(--green-lt); color:var(--green); font-weight:600; }
+
+/* ── SPEED PANEL — inside mode pill, shown when run selected ── */
+.cond-divider { padding:7px 13px 4px; font-size:.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; border-top:1px solid var(--border); }
+.mbtn.cond.active { background:rgba(52,120,246,.1); color:var(--blue); font-weight:600; }
+#speedPanel { display:none; }
+.speed-label { font-size:.68rem; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; padding:8px 13px 0; }
+.speed-row { display:flex; align-items:center; gap:8px; padding:0 13px 8px; }
+.speed-row input[type=range] { flex:1; accent-color:var(--green); min-width:100px; }
+.speed-val { font-size:.85rem; font-weight:600; color:var(--green); min-width:52px; text-align:right; white-space:nowrap; }
+
+/* ── ACTION STACK — bottom right ── */
+#stackAction { right:12px; bottom:12px; display:flex; flex-direction:column; }
+#stackAction > .toggle-btn { width:46px; }
+.abtn { display:flex; align-items:center; gap:9px; padding:10px 14px; font-family:inherit; font-size:.76rem; font-weight:500; background:none; border:none; border-top:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--text2); transition:background .12s; }
+.abtn:active { background:var(--bg); }
+.abtn .ai { font-size:.95rem; width:20px; text-align:center; }
+.abtn.a-draw  { background:var(--green-lt)!important; color:var(--green)!important; font-weight:600; }
+.abtn.a-free  { background:var(--blue-lt)!important; color:var(--blue)!important; font-weight:600; }
+.abtn.a-route { background:rgba(200,168,75,.15)!important; color:#7a5c1e!important; font-weight:600; }
+
+/* ── INDICATORS ── */
+.indicator { position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:20px; padding:6px 14px; font-size:.72rem; font-weight:500; z-index:500; white-space:nowrap; box-shadow:0 1px 6px rgba(0,0,0,.1); display:none; }
+.indicator.vis { display:flex; align-items:center; gap:8px; }
+#drawInd  { border-color:var(--green); color:var(--green); }
+#freeInd  { background:var(--blue-lt); border-color:var(--blue); color:var(--blue); }
+#routeInd { background:rgba(255,248,230,.97); border-color:#c8a84b; color:#7a5c1e; }
+#btnUseLocation { background:rgba(200,168,75,.2); border:1px solid #c8a84b; color:#7a5c1e; border-radius:12px; padding:3px 8px; font-family:inherit; font-size:.7rem; font-weight:600; cursor:pointer; white-space:nowrap; }
+
+/* ── TRACK OVERLAY ── */
+#trackOverlay { position:absolute; top:12px; left:12px; background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:var(--radius); padding:10px 13px; font-size:.72rem; z-index:500; display:none; min-width:148px; box-shadow:0 2px 10px rgba(0,0,0,.1); }
+#trackOverlay.vis { display:block; }
+.ttitle { font-size:.65rem; font-weight:600; color:var(--blue); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+.ldot2 { width:7px; height:7px; background:var(--red); border-radius:50%; animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+.trow { display:flex; justify-content:space-between; gap:14px; margin-top:3px; color:var(--text2); }
+.trow span:last-child { color:var(--text); font-weight:500; }
+
+/* ── CENTER TOGGLE ── */
+#centerToggle { position:absolute; bottom:70px; left:12px; background:rgba(255,255,255,.92); border:1px solid var(--border); color:var(--blue); padding:6px 11px; border-radius:20px; font-family:inherit; font-size:.7rem; font-weight:500; z-index:500; cursor:pointer; display:none; box-shadow:0 1px 6px rgba(0,0,0,.1); }
+#centerToggle.vis { display:block; }
+#centerToggle.locked { background:var(--blue-lt); }
+
+/* ── SPINNER ── */
+#spinner { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:var(--radius); padding:14px 20px; font-size:.82rem; font-weight:500; color:var(--text2); z-index:600; display:none; box-shadow:0 4px 16px rgba(0,0,0,.12); align-items:center; gap:8px; }
+#spinner.vis { display:flex; }
+.spin { animation:spin .8s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── GPS DOT ── */
+.gps-dot { width:16px; height:16px; background:var(--blue); border:3px solid #fff; border-radius:50%; box-shadow:0 0 0 0 rgba(52,120,246,.5); animation:gpulse 2s infinite; }
+@keyframes gpulse { 0%{box-shadow:0 0 0 0 rgba(52,120,246,.5)} 70%{box-shadow:0 0 0 10px rgba(52,120,246,0)} 100%{box-shadow:0 0 0 0 rgba(52,120,246,0)} }
+
+/* ── WAYPOINT MARKERS ── */
+.wp { border-radius:50%; border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3); }
+.wp-s { width:18px; height:18px; background:var(--green); }
+.wp-m { width:14px; height:14px; background:var(--gold); }
+.wp-e { width:18px; height:18px; background:var(--red); }
+
+/* ── TOAST ── */
+#toast { position:absolute; bottom:70px; left:50%; transform:translateX(-50%) translateY(6px); background:rgba(28,28,30,.88); color:#fff; padding:7px 16px; border-radius:20px; font-size:.78rem; font-weight:500; z-index:900; pointer-events:none; opacity:0; transition:opacity .2s,transform .2s; white-space:normal; max-width:88%; text-align:center; backdrop-filter:blur(6px); }
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ── STATS ── */
+.stats-panel { flex-shrink:0; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px 12px; z-index:400; }
+.stats-row  { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:6px; }
+.stats-row2 { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.stat-card  { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:7px 6px; text-align:center; }
+.sv { font-size:1.05rem; font-weight:600; color:var(--gold); line-height:1; margin-bottom:2px; }
+.sl { font-size:.58rem; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; }
