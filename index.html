@@ -72,13 +72,13 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 .mbtn:active { background:var(–bg); }
 .mbtn.active { background:var(–green-lt); color:var(–green); font-weight:600; }
 
-/* ── SPEED MODAL — below mode, left ── */
-#speedModal { position:absolute; left:148px; top:70px; z-index:501; background:var(–surface); border:1px solid var(–border); border-radius:14px; padding:13px 15px; box-shadow:0 4px 16px rgba(0,0,0,.15); display:none; min-width:175px; }
-#speedModal.visible { display:block; }
-#speedModal label { font-size:.68rem; font-weight:600; color:var(–text2); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:7px; }
+/* ── SPEED PANEL — inside mode pill, shown when run selected ── */
+#speedPanel { display:none; border-top:1px solid var(–border); padding:10px 13px 12px; }
+#speedPanel.vis { display:block; }
+.speed-label { font-size:.68rem; font-weight:600; color:var(–text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
 .speed-row { display:flex; align-items:center; gap:8px; }
-.speed-row input[type=range] { flex:1; accent-color:var(–green); }
-.speed-val { font-size:.88rem; font-weight:600; color:var(–green); min-width:48px; text-align:right; }
+.speed-row input[type=range] { flex:1; accent-color:var(–green); min-width:100px; }
+.speed-val { font-size:.85rem; font-weight:600; color:var(–green); min-width:52px; text-align:right; white-space:nowrap; }
 
 /* ── ACTION STACK — bottom right ── */
 #stackAction { right:12px; bottom:12px; display:flex; flex-direction:column; }
@@ -92,10 +92,11 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 
 /* ── INDICATORS ── */
 .indicator { position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,.95); border:1px solid var(–border); border-radius:20px; padding:6px 14px; font-size:.72rem; font-weight:500; z-index:500; white-space:nowrap; box-shadow:0 1px 6px rgba(0,0,0,.1); display:none; }
-.indicator.vis { display:block; }
+.indicator.vis { display:flex; align-items:center; gap:8px; }
 #drawInd  { border-color:var(–green); color:var(–green); }
 #freeInd  { background:var(–blue-lt); border-color:var(–blue); color:var(–blue); }
 #routeInd { background:rgba(255,248,230,.97); border-color:#c8a84b; color:#7a5c1e; }
+#btnUseLocation { background:rgba(200,168,75,.2); border:1px solid #c8a84b; color:#7a5c1e; border-radius:12px; padding:3px 8px; font-family:inherit; font-size:.7rem; font-weight:600; cursor:pointer; white-space:nowrap; }
 
 /* ── TRACK OVERLAY ── */
 #trackOverlay { position:absolute; top:12px; left:12px; background:rgba(255,255,255,.95); border:1px solid var(–border); border-radius:var(–radius); padding:10px 13px; font-size:.72rem; z-index:500; display:none; min-width:148px; box-shadow:0 2px 10px rgba(0,0,0,.1); }
@@ -107,7 +108,7 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 .trow span:last-child { color:var(–text); font-weight:500; }
 
 /* ── CENTER TOGGLE ── */
-#centerToggle { position:absolute; bottom:245px; left:12px; background:rgba(255,255,255,.92); border:1px solid var(–border); color:var(–blue); padding:6px 11px; border-radius:20px; font-family:inherit; font-size:.7rem; font-weight:500; z-index:500; cursor:pointer; display:none; box-shadow:0 1px 6px rgba(0,0,0,.1); }
+#centerToggle { position:absolute; bottom:70px; left:12px; background:rgba(255,255,255,.92); border:1px solid var(–border); color:var(–blue); padding:6px 11px; border-radius:20px; font-family:inherit; font-size:.7rem; font-weight:500; z-index:500; cursor:pointer; display:none; box-shadow:0 1px 6px rgba(0,0,0,.1); }
 #centerToggle.vis { display:block; }
 #centerToggle.locked { background:var(–blue-lt); }
 
@@ -128,7 +129,7 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 .wp-e { width:18px; height:18px; background:var(–red); }
 
 /* ── TOAST ── */
-#toast { position:absolute; bottom:80px; left:50%; transform:translateX(-50%) translateY(6px); background:rgba(28,28,30,.88); color:#fff; padding:7px 16px; border-radius:20px; font-size:.78rem; font-weight:500; z-index:900; pointer-events:none; opacity:0; transition:opacity .2s,transform .2s; white-space:normal; max-width:88%; text-align:center; backdrop-filter:blur(6px); }
+#toast { position:absolute; bottom:70px; left:50%; transform:translateX(-50%) translateY(6px); background:rgba(28,28,30,.88); color:#fff; padding:7px 16px; border-radius:20px; font-size:.78rem; font-weight:500; z-index:900; pointer-events:none; opacity:0; transition:opacity .2s,transform .2s; white-space:normal; max-width:88%; text-align:center; backdrop-filter:blur(6px); }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* ── STATS ── */
@@ -164,7 +165,7 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
     </div>
   </div>
 
-  <!-- MODE STACK — collapsed, top right -->
+  <!-- MODE STACK — collapsed, top left -->
 
   <div class="pill" id="stackMode">
     <button class="toggle-btn" id="modeToggle" onclick="toggleModeMenu()">🚶</button>
@@ -172,16 +173,13 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
       <button class="mbtn active" id="modeWalk" onclick="setMode('walk')">🚶 Kävely</button>
       <button class="mbtn"        id="modeDog"  onclick="setMode('dog')"> 🐕 Koira</button>
       <button class="mbtn"        id="modeRun"  onclick="setMode('run')"> 🏃 Juoksu</button>
-    </div>
-  </div>
-
-  <!-- SPEED MODAL -->
-
-  <div id="speedModal">
-    <label>Juoksuvauhti tasamaalla</label>
-    <div class="speed-row">
-      <input type="range" id="runSpeed" min="4" max="20" step="0.5" value="9" oninput="onSpeedChange()">
-      <span class="speed-val" id="runSpeedVal">9.0 km/h</span>
+      <div id="speedPanel">
+        <div class="speed-label">Juoksuvauhti tasamaalla</div>
+        <div class="speed-row">
+          <input type="range" id="runSpeed" min="4" max="20" step="0.5" value="9" oninput="onSpeedChange()">
+          <span class="speed-val" id="runSpeedVal">9.0 km/h</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -218,7 +216,10 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 
   <div id="drawInd"  class="indicator">✏️ Napauta karttaan lisätäksesi pisteitä</div>
   <div id="freeInd"  class="indicator">🖊️ Piirrä sormella — vapauta lopettaaksesi</div>
-  <div id="routeInd" class="indicator">🧭 Napauta lähtöpiste kartalle</div>
+  <div id="routeInd" class="indicator route-ind-wrap">
+    <span id="routeIndText">🧭 Napauta lähtöpiste kartalle</span>
+    <button id="btnUseLocation" onclick="useLocationAsStart()">📍 Sijaintini</button>
+  </div>
 
   <!-- TRACK OVERLAY -->
 
@@ -323,8 +324,8 @@ function setMode(m) {
   });
   // Update toggle button icon to show active mode
   document.getElementById('modeToggle').textContent = MODE_ICONS[m];
-  document.getElementById('speedModal').classList.toggle('visible', m==='run');
-  closeAllMenus();
+  document.getElementById('speedPanel').classList.toggle('vis', m==='run');
+  if (m !== 'run') closeAllMenus(); // keep open for run so user can set speed
   updateStats();
   showToast({walk:'🚶 Kävelytila',dog:'🐕 Koiratila',run:'🏃 Juoksutila'}[m]);
 }
