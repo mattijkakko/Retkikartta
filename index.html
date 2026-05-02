@@ -25,9 +25,9 @@
 body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
 
 /* ── HEADER ── */
-header { background:var(–surface); padding:10px 16px; display:flex; align-items:center; border-bottom:1px solid var(–border); flex-shrink:0; z-index:1000; }
+header { background:var(--surface); padding:10px 16px; display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0; z-index:1000; }
 .logo { font-size:1.1rem; font-weight:600; letter-spacing:-0.02em; display:flex; align-items:center; gap:6px; }
-.logo em { font-style:italic; font-weight:300; color:var(–text2); }
+.logo em { font-style:italic; font-weight:300; color:var(--text2); }
 
 /* ── MAP WRAPPER ── */
 #mapwrap { position:relative; flex:1; overflow:hidden; }
@@ -35,13 +35,13 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 
 /* ── LEAFLET OVERRIDES ── */
 .leaflet-control-zoom { border:none!important; box-shadow:0 2px 8px rgba(0,0,0,.12)!important; border-radius:10px!important; overflow:hidden; }
-.leaflet-control-zoom a { background:var(–surface)!important; color:var(–text)!important; border:none!important; border-bottom:1px solid var(–border)!important; font-size:1.1rem!important; line-height:32px!important; width:32px!important; height:32px!important; }
+.leaflet-control-zoom a { background:var(--surface)!important; color:var(--text)!important; border:none!important; border-bottom:1px solid var(--border)!important; font-size:1.1rem!important; line-height:32px!important; width:32px!important; height:32px!important; }
 .leaflet-control-zoom-out { border-bottom:none!important; }
-.leaflet-control-zoom a:hover { background:var(–bg)!important; }
+.leaflet-control-zoom a:hover { background:var(--bg)!important; }
 .leaflet-control-attribution { display:none!important; }
 
 /* ── SHARED PILL ── */
-.pill { position:absolute; background:rgba(255,255,255,.95); border:1px solid var(–border); border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.13); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); overflow:hidden; z-index:500; }
+.pill { position:absolute; background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.13); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); overflow:hidden; z-index:500; }
 
 /* ── SHARED TOGGLE BUTTON ── */
 .toggle-btn { width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; background:none; border:none; cursor:pointer; }
@@ -50,9 +50,9 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 
 /* ── GPS STACK — bottom left ── */
 #stackGps { left:12px; bottom:12px; display:flex; flex-direction:column; }
-#gpsMenu .ico-btn { width:auto; min-width:140px; padding:9px 13px; justify-content:flex-start; gap:8px; font-size:.75rem; font-weight:500; color:var(–text2); border-bottom:none; border-top:1px solid var(–border); }
-#gpsMenu .ico-btn:last-child { border-top:1px solid var(–border); }
-.ico-btn.trk-on { background:var(–blue)!important; color:#fff!important; animation:tpulse 1.5s infinite; }
+#gpsMenu .ico-btn { width:auto; min-width:140px; padding:9px 13px; justify-content:flex-start; gap:8px; font-size:.75rem; font-weight:500; color:var(--text2); border-bottom:none; border-top:1px solid var(--border); }
+#gpsMenu .ico-btn:last-child { border-top:1px solid var(--border); }
+.ico-btn.trk-on { background:var(--blue)!important; color:#fff!important; animation:tpulse 1.5s infinite; }
 @keyframes tpulse { 0%,100%{box-shadow:0 0 0 0 rgba(52,120,246,.4)} 50%{box-shadow:0 0 0 8px rgba(52,120,246,0)} }
 
 /* ── LAYER PILL — top left, right of zoom ── */
@@ -60,86 +60,87 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 .layer-toggle { width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; background:none; border:none; cursor:pointer; }
 .layer-menu { display:none; flex-direction:column; }
 .layer-menu.open { display:flex; }
-.lbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(–border); cursor:pointer; white-space:nowrap; color:var(–text); transition:background .12s; }
-.lbtn:active { background:var(–bg); }
-.lbtn.active { color:var(–green); font-weight:600; }
-.ldot { width:7px; height:7px; border-radius:50%; background:var(–border); flex-shrink:0; }
-.lbtn.active .ldot { background:var(–green); }
+.lbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--text); transition:background .12s; }
+.lbtn:active { background:var(--bg); }
+.lbtn.active { color:var(--green); font-weight:600; }
+.ldot { width:7px; height:7px; border-radius:50%; background:var(--border); flex-shrink:0; }
+.lbtn.active .ldot { background:var(--green); }
 
 /* ── MODE STACK — top left, right of layer ── */
 #stackMode { left:148px; top:12px; display:flex; flex-direction:column; }
-.mbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(–border); cursor:pointer; white-space:nowrap; color:var(–text2); transition:background .12s; min-width:115px; }
-.mbtn:active { background:var(–bg); }
-.mbtn.active { background:var(–green-lt); color:var(–green); font-weight:600; }
+.mbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--text2); transition:background .12s; min-width:115px; }
+.mbtn:active { background:var(--bg); }
+.mbtn.active { background:var(--green-lt); color:var(--green); font-weight:600; }
 
 /* ── SPEED PANEL — inside mode pill, shown when run selected ── */
-.cond-divider { padding:7px 13px 4px; font-size:.62rem; font-weight:700; color:var(–text2); text-transform:uppercase; letter-spacing:.07em; border-top:1px solid var(–border); }
-.mbtn.cond.active { background:rgba(52,120,246,.1); color:var(–blue); font-weight:600; }
+.cond-divider { padding:7px 13px 4px; font-size:.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; border-top:1px solid var(--border); }
+.mbtn.cond.active { background:rgba(52,120,246,.1); color:var(--blue); font-weight:600; }
+#speedPanel { display:none; }
 #speedPanel.vis { display:block; }
-.speed-label { font-size:.68rem; font-weight:600; color:var(–text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+.speed-label { font-size:.68rem; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
 .speed-row { display:flex; align-items:center; gap:8px; }
-.speed-row input[type=range] { flex:1; accent-color:var(–green); min-width:100px; }
-.speed-val { font-size:.85rem; font-weight:600; color:var(–green); min-width:52px; text-align:right; white-space:nowrap; }
+.speed-row input[type=range] { flex:1; accent-color:var(--green); min-width:100px; }
+.speed-val { font-size:.85rem; font-weight:600; color:var(--green); min-width:52px; text-align:right; white-space:nowrap; }
 
 /* ── ACTION STACK — bottom right ── */
 #stackAction { right:12px; bottom:12px; display:flex; flex-direction:column; }
 #stackAction > .toggle-btn { width:46px; }
-.abtn { display:flex; align-items:center; gap:9px; padding:10px 14px; font-family:inherit; font-size:.76rem; font-weight:500; background:none; border:none; border-top:1px solid var(–border); cursor:pointer; white-space:nowrap; color:var(–text2); transition:background .12s; }
-.abtn:active { background:var(–bg); }
+.abtn { display:flex; align-items:center; gap:9px; padding:10px 14px; font-family:inherit; font-size:.76rem; font-weight:500; background:none; border:none; border-top:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--text2); transition:background .12s; }
+.abtn:active { background:var(--bg); }
 .abtn .ai { font-size:.95rem; width:20px; text-align:center; }
-.abtn.a-draw  { background:var(–green-lt)!important; color:var(–green)!important; font-weight:600; }
-.abtn.a-free  { background:var(–blue-lt)!important; color:var(–blue)!important; font-weight:600; }
+.abtn.a-draw  { background:var(--green-lt)!important; color:var(--green)!important; font-weight:600; }
+.abtn.a-free  { background:var(--blue-lt)!important; color:var(--blue)!important; font-weight:600; }
 .abtn.a-route { background:rgba(200,168,75,.15)!important; color:#7a5c1e!important; font-weight:600; }
 
 /* ── INDICATORS ── */
-.indicator { position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,.95); border:1px solid var(–border); border-radius:20px; padding:6px 14px; font-size:.72rem; font-weight:500; z-index:500; white-space:nowrap; box-shadow:0 1px 6px rgba(0,0,0,.1); display:none; }
+.indicator { position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:20px; padding:6px 14px; font-size:.72rem; font-weight:500; z-index:500; white-space:nowrap; box-shadow:0 1px 6px rgba(0,0,0,.1); display:none; }
 .indicator.vis { display:flex; align-items:center; gap:8px; }
-#drawInd  { border-color:var(–green); color:var(–green); }
-#freeInd  { background:var(–blue-lt); border-color:var(–blue); color:var(–blue); }
+#drawInd  { border-color:var(--green); color:var(--green); }
+#freeInd  { background:var(--blue-lt); border-color:var(--blue); color:var(--blue); }
 #routeInd { background:rgba(255,248,230,.97); border-color:#c8a84b; color:#7a5c1e; }
 #btnUseLocation { background:rgba(200,168,75,.2); border:1px solid #c8a84b; color:#7a5c1e; border-radius:12px; padding:3px 8px; font-family:inherit; font-size:.7rem; font-weight:600; cursor:pointer; white-space:nowrap; }
 
 /* ── TRACK OVERLAY ── */
-#trackOverlay { position:absolute; top:12px; left:12px; background:rgba(255,255,255,.95); border:1px solid var(–border); border-radius:var(–radius); padding:10px 13px; font-size:.72rem; z-index:500; display:none; min-width:148px; box-shadow:0 2px 10px rgba(0,0,0,.1); }
+#trackOverlay { position:absolute; top:12px; left:12px; background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:var(--radius); padding:10px 13px; font-size:.72rem; z-index:500; display:none; min-width:148px; box-shadow:0 2px 10px rgba(0,0,0,.1); }
 #trackOverlay.vis { display:block; }
-.ttitle { font-size:.65rem; font-weight:600; color:var(–blue); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
-.ldot2 { width:7px; height:7px; background:var(–red); border-radius:50%; animation:blink 1s infinite; }
+.ttitle { font-size:.65rem; font-weight:600; color:var(--blue); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+.ldot2 { width:7px; height:7px; background:var(--red); border-radius:50%; animation:blink 1s infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
-.trow { display:flex; justify-content:space-between; gap:14px; margin-top:3px; color:var(–text2); }
-.trow span:last-child { color:var(–text); font-weight:500; }
+.trow { display:flex; justify-content:space-between; gap:14px; margin-top:3px; color:var(--text2); }
+.trow span:last-child { color:var(--text); font-weight:500; }
 
 /* ── CENTER TOGGLE ── */
-#centerToggle { position:absolute; bottom:70px; left:12px; background:rgba(255,255,255,.92); border:1px solid var(–border); color:var(–blue); padding:6px 11px; border-radius:20px; font-family:inherit; font-size:.7rem; font-weight:500; z-index:500; cursor:pointer; display:none; box-shadow:0 1px 6px rgba(0,0,0,.1); }
+#centerToggle { position:absolute; bottom:70px; left:12px; background:rgba(255,255,255,.92); border:1px solid var(--border); color:var(--blue); padding:6px 11px; border-radius:20px; font-family:inherit; font-size:.7rem; font-weight:500; z-index:500; cursor:pointer; display:none; box-shadow:0 1px 6px rgba(0,0,0,.1); }
 #centerToggle.vis { display:block; }
-#centerToggle.locked { background:var(–blue-lt); }
+#centerToggle.locked { background:var(--blue-lt); }
 
 /* ── SPINNER ── */
-#spinner { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,.95); border:1px solid var(–border); border-radius:var(–radius); padding:14px 20px; font-size:.82rem; font-weight:500; color:var(–text2); z-index:600; display:none; box-shadow:0 4px 16px rgba(0,0,0,.12); align-items:center; gap:8px; }
+#spinner { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:var(--radius); padding:14px 20px; font-size:.82rem; font-weight:500; color:var(--text2); z-index:600; display:none; box-shadow:0 4px 16px rgba(0,0,0,.12); align-items:center; gap:8px; }
 #spinner.vis { display:flex; }
 .spin { animation:spin .8s linear infinite; display:inline-block; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
 /* ── GPS DOT ── */
-.gps-dot { width:16px; height:16px; background:var(–blue); border:3px solid #fff; border-radius:50%; box-shadow:0 0 0 0 rgba(52,120,246,.5); animation:gpulse 2s infinite; }
+.gps-dot { width:16px; height:16px; background:var(--blue); border:3px solid #fff; border-radius:50%; box-shadow:0 0 0 0 rgba(52,120,246,.5); animation:gpulse 2s infinite; }
 @keyframes gpulse { 0%{box-shadow:0 0 0 0 rgba(52,120,246,.5)} 70%{box-shadow:0 0 0 10px rgba(52,120,246,0)} 100%{box-shadow:0 0 0 0 rgba(52,120,246,0)} }
 
 /* ── WAYPOINT MARKERS ── */
 .wp { border-radius:50%; border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3); }
-.wp-s { width:18px; height:18px; background:var(–green); }
-.wp-m { width:14px; height:14px; background:var(–gold); }
-.wp-e { width:18px; height:18px; background:var(–red); }
+.wp-s { width:18px; height:18px; background:var(--green); }
+.wp-m { width:14px; height:14px; background:var(--gold); }
+.wp-e { width:18px; height:18px; background:var(--red); }
 
 /* ── TOAST ── */
 #toast { position:absolute; bottom:70px; left:50%; transform:translateX(-50%) translateY(6px); background:rgba(28,28,30,.88); color:#fff; padding:7px 16px; border-radius:20px; font-size:.78rem; font-weight:500; z-index:900; pointer-events:none; opacity:0; transition:opacity .2s,transform .2s; white-space:normal; max-width:88%; text-align:center; backdrop-filter:blur(6px); }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* ── STATS ── */
-.stats-panel { flex-shrink:0; background:var(–surface); border-top:1px solid var(–border); padding:10px 14px 12px; z-index:400; }
+.stats-panel { flex-shrink:0; background:var(--surface); border-top:1px solid var(--border); padding:10px 14px 12px; z-index:400; }
 .stats-row  { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:6px; }
 .stats-row2 { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
-.stat-card  { background:var(–bg); border:1px solid var(–border); border-radius:var(–radius); padding:7px 6px; text-align:center; }
-.sv { font-size:1.05rem; font-weight:600; color:var(–gold); line-height:1; margin-bottom:2px; }
-.sl { font-size:.58rem; font-weight:500; color:var(–text2); text-transform:uppercase; letter-spacing:.06em; }
+.stat-card  { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:7px 6px; text-align:center; }
+.sv { font-size:1.05rem; font-weight:600; color:var(--gold); line-height:1; margin-bottom:2px; }
+.sl { font-size:.58rem; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; }
 </style>
 
 </head>
@@ -353,11 +354,18 @@ function setCond(c) {
   );
   if (c !== 'summer') showToast(COND_LABEL[c]+' — hidastuskerroin '+(COND_COEFF[c]*100).toFixed(0)+'%');
   else showToast('☀️ Kesäolosuhteet');
-  if (c !== 'run') closeAllMenus();
+  closeAllMenus();
   updateStats();
 }
 
 function baseSpeed() { return SPEEDS[currentMode] * COND_COEFF[currentCond] || 4.5; }
+
+// ── VAKIOT ─────────────────────────────────────
+const HISTORY_LIMIT       = 40;
+const RDP_EPSILON         = 0.0003;
+const ELE_SAMPLE_MAX      = 100;
+const TRACK_AGE_MS        = 86400000;
+const GPS_MIN_INTERVAL_MS = 10000;
 
 // ═══════════════════════════════════════════════
 // ROUTE STATE
@@ -369,7 +377,7 @@ function rl(l){ if(l) try{map.removeLayer(l);}catch(e){} return null; }
 
 function saveState() {
   history.push({ wp:waypoints.map(p=>L.latLng(p.lat,p.lng)), wt:[...wpTypes] });
-  if (history.length>40) history.shift();
+  if (history.length > HISTORY_LIMIT) history.shift();
 }
 function undoLast() {
   if (!history.length){showToast('Ei kumottavaa');return;}
@@ -521,7 +529,7 @@ function fhEnd(){
   if(!freehandStarted||freehandPts.length<5){cleanFH();return;}
   let dist=0;for(let i=1;i<freehandPts.length;i++)dist+=haversine(freehandPts[i-1],freehandPts[i]);
   if(dist<0.03){cleanFH();return;}
-  const simple=rdp(freehandPts,0.0003);
+  const simple=rdp(freehandPts, RDP_EPSILON);
   freehandLine=rl(freehandLine);
   spliceFH(simple); freehandPts=[]; freehandStarted=false;
 }
@@ -641,7 +649,7 @@ function scheduleEle(){clearTimeout(eleTimer);if(waypoints.length>0)eleTimer=set
 async function fetchEle(){
   if(!waypoints.length)return;
   try{
-    const pts=waypoints,max=100;
+    const pts=waypoints,max=ELE_SAMPLE_MAX;
     let sampled;
     if(pts.length<=max)sampled=pts.map((p,i)=>({p,i}));
     else{sampled=[];for(let s=0;s<max;s++){const i=Math.round(s*(pts.length-1)/(max-1));sampled.push({p:pts[i],i});}}
@@ -670,6 +678,7 @@ async function fetchCurEle(ll){try{const r=await fetch(`https://api.open-meteo.c
 // GPS TRACKING
 // ═══════════════════════════════════════════════
 const SKEY='retkikartta_track';
+const var_blue='#3478f6';
 let tracking=false,watchId=null,trackPts=[],trackStart=null,trackTimer=null,centerLocked=true,lastGpsTime=0,wakeLock=null;
 
 async function reqWL(){if(!('wakeLock'in navigator))return;try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>wakeLock=null);}catch(e){}}
@@ -681,7 +690,7 @@ function clearTrackStorage(){try{localStorage.removeItem(SKEY);}catch(e){}}
 function loadTrack(){
   try{
     const raw=localStorage.getItem(SKEY);if(!raw)return;
-    const d=JSON.parse(raw);if(Date.now()-d.saved>86400000){localStorage.removeItem(SKEY);return;}
+    const d=JSON.parse(raw);if(Date.now()-d.saved > TRACK_AGE_MS){localStorage.removeItem(SKEY);return;}
     if(!d.points||d.points.length<2)return;
     trackPts=d.points.map(p=>{const ll=L.latLng(p[0],p[1]);ll.ele=p[2]??null;return ll;});
     trackStart=d.start;
@@ -691,7 +700,6 @@ function loadTrack(){
     showToast('📂 Edellinen reitti palautettu');
   }catch(e){}
 }
-const var_blue='#3478f6';
 
 function locateOnce(){
   showToast('Haetaan sijaintia…');
@@ -726,7 +734,7 @@ function stopTracking(){
   const d=trkDist();showToast(`⏹️ ${d<1?(d*1000).toFixed(0)+' m':d.toFixed(2)+' km'} tallennettu`);
 }
 function onGps(pos){
-  const now=Date.now();if(now-lastGpsTime<10000)return;lastGpsTime=now;
+  const now=Date.now();if(now-lastGpsTime < GPS_MIN_INTERVAL_MS)return;lastGpsTime=now;
   const ll=L.latLng(pos.coords.latitude,pos.coords.longitude);ll.ele=pos.coords.altitude??null;
   placeGpsDot(ll,pos.coords.accuracy);trackPts.push(ll);
   if(ll.ele!==null)document.getElementById('statEle').textContent=Math.round(ll.ele)+' m';
@@ -777,7 +785,7 @@ function importGPX(event){
       if(!pts.length){showToast('⚠️ Ei pisteitä');return;}
       if(isTrk||pts.length>50){trackLine=rl(trackLine);trackPts=pts;trackLine=L.polyline(pts,{color:var_blue,weight:4,opacity:.85,lineJoin:'round',lineCap:'round'}).addTo(map);map.fitBounds(trackLine.getBounds(),{padding:[30,30]});document.getElementById('btnExpTrack').style.display='';}
       else{saveState();waypoints=pts;wpTypes=pts.map(()=>'drawn');redraw();if(segLines.length)map.fitBounds(segLines[0].getBounds(),{padding:[30,30]});}
-      const nm=xml.querySelector('name');showToast(`📂 ${nm?nm.textContent.trim():file.name} (${pts.length} pistettä)`);
+      const nm=xml.getElementsByTagNameNS(ns,'name')[0];showToast(`📂 ${nm?nm.textContent.trim():file.name} (${pts.length} pistettä)`);
     }catch(err){showToast('⚠️ GPX-virhe');}
     event.target.value='';
   };
