@@ -73,7 +73,8 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
 .mbtn.active { background:var(–green-lt); color:var(–green); font-weight:600; }
 
 /* ── SPEED PANEL — inside mode pill, shown when run selected ── */
-#speedPanel { display:none; border-top:1px solid var(–border); padding:10px 13px 12px; }
+.cond-divider { padding:7px 13px 4px; font-size:.62rem; font-weight:700; color:var(–text2); text-transform:uppercase; letter-spacing:.07em; border-top:1px solid var(–border); }
+.mbtn.cond.active { background:rgba(52,120,246,.1); color:var(–blue); font-weight:600; }
 #speedPanel.vis { display:block; }
 .speed-label { font-size:.68rem; font-weight:600; color:var(–text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
 .speed-row { display:flex; align-items:center; gap:8px; }
@@ -180,6 +181,12 @@ header { background:var(–surface); padding:10px 16px; display:flex; align-item
           <span class="speed-val" id="runSpeedVal">9.0 km/h</span>
         </div>
       </div>
+      <div class="cond-divider">Maasto-olosuhteet</div>
+      <button class="mbtn cond active" id="cond-summer" onclick="setCond('summer')">☀️ Kesä / kuiva</button>
+      <button class="mbtn cond"        id="cond-autumn" onclick="setCond('autumn')">🍂 Syksy / märkä</button>
+      <button class="mbtn cond"        id="cond-crust"  onclick="setCond('crust')"> ❄️ Talvi / hanki</button>
+      <button class="mbtn cond"        id="cond-snow30" onclick="setCond('snow30')">🌨️ Lumi &lt;30 cm</button>
+      <button class="mbtn cond"        id="cond-snow60" onclick="setCond('snow60')">🌨️ Lumi &gt;30 cm</button>
     </div>
   </div>
 
@@ -334,7 +341,23 @@ function onSpeedChange() {
   document.getElementById('runSpeedVal').textContent = SPEEDS.run.toFixed(1)+' km/h';
   updateStats();
 }
-function baseSpeed() { return SPEEDS[currentMode] || 4.5; }
+// ── CONDITIONS ────────────────────────────────
+const COND_COEFF = { summer:1.0, autumn:0.85, crust:0.75, snow30:0.55, snow60:0.35 };
+const COND_LABEL = { summer:'☀️ Kesä', autumn:'🍂 Syksy', crust:'❄️ Hanki', snow30:'🌨️ Lumi <30cm', snow60:'🌨️ Lumi >30cm' };
+let currentCond = 'summer';
+
+function setCond(c) {
+  currentCond = c;
+  ['summer','autumn','crust','snow30','snow60'].forEach(id =>
+    document.getElementById('cond-'+id).classList.toggle('active', id===c)
+  );
+  if (c !== 'summer') showToast(COND_LABEL[c]+' — hidastuskerroin '+(COND_COEFF[c]*100).toFixed(0)+'%');
+  else showToast('☀️ Kesäolosuhteet');
+  if (c !== 'run') closeAllMenus();
+  updateStats();
+}
+
+function baseSpeed() { return SPEEDS[currentMode] * COND_COEFF[currentCond] || 4.5; }
 
 // ═══════════════════════════════════════════════
 // ROUTE STATE
