@@ -332,7 +332,7 @@ function setMode(m) {
   });
   // Update toggle button icon to show active mode
   document.getElementById('modeToggle').textContent = MODE_ICONS[m];
-  document.getElementById('speedPanel').classList.toggle('vis', m==='run');
+  document.getElementById('speedPanel').style.display = (m==='run') ? 'block' : 'none';
   if (m !== 'run') closeAllMenus(); // keep open for run so user can set speed
   updateStats();
   showToast({walk:'🚶 Kävelytila',dog:'🐕 Koiratila',run:'🏃 Juoksutila'}[m]);
@@ -799,6 +799,7 @@ let toastTimer;
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2500);}
 
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+document.getElementById('speedPanel').style.display = 'none';
 loadTrack();
 showToast('Tervetuloa Retkikarttaan! 🌲');
 </script>

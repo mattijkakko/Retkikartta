@@ -1,4 +1,4 @@
-const CACHE = ‘retkikartta-v1’;
+const CACHE = ‘retkikartta-v2’;
 const PRECACHE = [
 ‘/’,
 ‘/index.html’,
