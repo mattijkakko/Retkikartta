@@ -2,7 +2,8 @@ import { SPEEDS, COND_COEFF } from './utils.js'
 
 export const st = $state({
   // Map & layers
-  activeBase: 'osm',
+  activeBase: 'taustakartta',
+  searchOpen: false,
   hikeOn: false,
   // Menus
   openMenu: null,           // 'layer' | 'mode' | 'gps' | 'action' | null

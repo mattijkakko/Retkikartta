@@ -3,14 +3,15 @@
   import L from 'leaflet'
   import { st, showToast } from '../state.svelte.js'
   import { haversine, rdp, catmull, trkDist, fmtDist, RDP_EPSILON, HISTORY_LIMIT, GPS_MIN_INTERVAL_MS, COND_COEFF, COND_LABEL, MODE_ICONS } from '../utils.js'
-  import { fetchRoute, fetchElevation, fetchSingleElevation } from '../api.js'
+  import { fetchRoute, fetchElevation, fetchSingleElevation, geocode } from '../api.js'
   import { exportGPX, parseGPX } from '../gpx.js'
   import { saveTrack, clearTrackStorage, loadTrack } from '../storage.js'
+  import SearchPanel from './SearchPanel.svelte'
 
   const MML_KEY  = '113f9471-0872-42fa-9fe7-cbedae6572b8'
   const MML_BASE = 'https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0'
   const VAR_BLUE = '#3478f6'
-  const LAYER_TOASTS = { osm:'🗺️ OpenStreetMap', mml:'🇫🇮 MML Maastokartta', topo:'🏔️ Topokartta', satellite:'🛸 Satelliitti', ortho:'📷 MML Ortoilmakuva' }
+  const LAYER_TOASTS = { osm:'🗺️ OpenStreetMap', mml:'🇫🇮 MML Maastokartta', taustakartta:'🗺️ MML Taustakartta', topo:'🏔️ Topokartta', satellite:'🛸 Satelliitti', ortho:'📷 MML Ortoilmakuva' }
 
   let mapEl = $state(null)
   let fileInput = $state(null)
@@ -21,6 +22,13 @@
   let routeClickPts = [], routeMarkers = []
   let freehandPts = [], freehandActive = false, freehandStarted = false
   let watchId = null, trackTimer = null, wakeLock = null, lastGpsTime = 0, eleTimer = null
+
+  // ── Search state ─────────────────────────────────────────────────────────────
+  let searchResults  = $state([])
+  let searchRoutePts = $state([])   // [{name, lat, lng}] for address-based routing
+  let searchSearching = $state(false)
+  let searchMarker = null
+  let searchTimer = null
 
   let routeIndText  = $state('🧭 Napauta lähtöpiste kartalle')
   let showUseLoc    = $state(false)
@@ -319,6 +327,64 @@
     reader.readAsText(file)
   }
 
+  // ── Search ──────────────────────────────────────────────────────────────────
+  function onSearchQuery(q) {
+    clearTimeout(searchTimer)
+    searchResults = []
+    if (q.length < 3) { searchSearching = false; return }
+    searchSearching = true
+    searchTimer = setTimeout(async () => {
+      try { searchResults = await geocode(q) } catch(e) { showToast('⚠️ Hakuvirhe') }
+      searchSearching = false
+    }, 400)
+  }
+
+  function placeSearchMarker(ll) {
+    if (searchMarker) try { map.removeLayer(searchMarker) } catch(e) {}
+    searchMarker = L.marker(ll, {
+      icon: L.divIcon({ className: '', html: '<div class="wp wp-s"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
+    }).addTo(map)
+  }
+
+  function onSearchSelect(r) {
+    const ll = L.latLng(r.lat, r.lng)
+    map.setView(ll, 15)
+    placeSearchMarker(ll)
+    st.searchOpen = false
+    searchResults = []
+  }
+
+  function onSearchAddToRoute(r) {
+    searchRoutePts = [...searchRoutePts, r]
+    const ll = L.latLng(r.lat, r.lng)
+    placeSearchMarker(ll)
+    map.setView(ll, 14)
+    searchResults = []
+  }
+
+  function onSearchRemoveRoute(i) {
+    searchRoutePts = searchRoutePts.filter((_, idx) => idx !== i)
+  }
+
+  async function onSearchBuildRoute() {
+    if (searchRoutePts.length < 2) return
+    const pts = searchRoutePts.map(p => L.latLng(p.lat, p.lng))
+    searchRoutePts = []
+    st.searchOpen = false
+    if (searchMarker) { try { map.removeLayer(searchMarker) } catch(e) {} searchMarker = null }
+    // Reuse the existing buildRoute logic via routing mode
+    spinning = true
+    try {
+      const path = await fetchRoute(pts)
+      const routed = path.points.coordinates.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll })
+      saveRouteState(); st.waypoints = routed; st.wpTypes = routed.map(() => 'routed'); st.routeElevations = []
+      redraw()
+      if (segLines.length) map.fitBounds(segLines[0].getBounds(), { padding: [30, 30] })
+      showToast(`🧭 ${(path.distance / 1000).toFixed(2)} km löydetty`)
+    } catch(e) { showToast('⚠️ ' + e.message.slice(0, 100)) }
+    finally { spinning = false }
+  }
+
   // ── Map events ───────────────────────────────────────────────────────────────
   function onMapClick(e) {
     st.openMenu = null
@@ -336,14 +402,16 @@
   onMount(() => {
     LAYERS = {
       osm:       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
+      taustakartta: L.tileLayer(`${MML_BASE}/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 16 }),
       mml:       L.tileLayer(`${MML_BASE}/maastokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 18 }),
       topo:      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc' }),
       satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
       ortho:     L.tileLayer(`${MML_BASE}/ortokuva/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 19 }),
+      osm:       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
       hiking:    L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom: 19, opacity: 0.8 })
     }
     map = L.map(mapEl, { center: [62.5, 25.7], zoom: 6, zoomControl: true, attributionControl: false })
-    LAYERS.osm.addTo(map); map.on('click', onMapClick)
+    LAYERS.taustakartta.addTo(map); map.on('click', onMapClick)
     mapEl.addEventListener('touchstart', onTouchStart, { passive: false })
     mapEl.addEventListener('touchmove',  onTouchMove,  { passive: false })
     mapEl.addEventListener('touchend',   onTouchEnd,   { passive: false })
@@ -379,12 +447,13 @@
   })
 
   const BASE_LAYERS = [
-    { id: 'osm',       label: 'OpenStreetMap' },
-    { id: 'mml',       label: 'MML Maasto' },
-    { id: 'topo',      label: 'Topokartta' },
-    { id: 'satellite', label: 'Satelliitti' },
-    { id: 'ortho',     label: 'MML Ilmakuva' },
-    { id: 'hiking',    label: '+ Reitit' },
+    { id: 'taustakartta', label: 'MML Taustakartta' },
+    { id: 'mml',          label: 'MML Maastokartta' },
+    { id: 'osm',          label: 'OpenStreetMap' },
+    { id: 'topo',         label: 'Topokartta' },
+    { id: 'satellite',    label: 'Satelliitti' },
+    { id: 'ortho',        label: 'MML Ilmakuva' },
+    { id: 'hiking',       label: '+ Reitit' },
   ]
   const MODES = [
     { id: 'walk', label: '🚶 Kävely' },
@@ -412,6 +481,21 @@
 
 <div id="mapwrap">
   <div id="map" bind:this={mapEl}></div>
+
+  <!-- SEARCH PANEL -->
+  {#if st.searchOpen}
+    <SearchPanel
+      results={searchResults}
+      routePts={searchRoutePts}
+      searching={searchSearching}
+      onQueryInput={onSearchQuery}
+      onSelect={onSearchSelect}
+      onAddToRoute={onSearchAddToRoute}
+      onRemoveRoute={onSearchRemoveRoute}
+      onBuildRoute={onSearchBuildRoute}
+      onClose={() => { st.searchOpen = false; searchResults = []; searchRoutePts = [] }}
+    />
+  {/if}
 
   <!-- LAYER PILL -->
   <div class="pill" id="stackLayer">

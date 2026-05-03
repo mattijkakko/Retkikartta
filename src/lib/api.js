@@ -1,6 +1,26 @@
-import L from 'leaflet'
+export async function geocode(query) {
+  const r = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1`,
+    { signal: AbortSignal.timeout(6000), headers: { 'Accept-Language': 'fi,en' } }
+  )
+  const json = await r.json()
+  return json.map(item => {
+    const a = item.address ?? {}
+    const parts = [
+      a.road && a.house_number ? `${a.road} ${a.house_number}` : (a.road || null),
+      a.city || a.town || a.village || a.municipality || null,
+      a.country !== 'Suomi' ? a.country : null
+    ].filter(Boolean)
+    return {
+      name: parts.length ? parts.join(', ') : item.display_name.split(',')[0],
+      fullName: item.display_name,
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon)
+    }
+  })
+}
 
-const GH_KEY = 'e379a544-f2a3-4ad2-93c0-a2b43ce9047a';
+
 
 export async function fetchRoute(pts) {
   const r = await fetch(`https://graphhopper.com/api/1/route?key=${GH_KEY}`, {
