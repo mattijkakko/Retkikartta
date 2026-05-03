@@ -35,11 +35,11 @@ header { background:var(--surface); padding:10px 16px; display:flex; align-items
 .collapse-menu { display:none; flex-direction:column; }
 .collapse-menu.open { display:flex; }
 
-/* ── GPS STACK — bottom left ── */
-#stackGps { left:12px; bottom:12px; display:flex; flex-direction:column; }
-#gpsMenu .ico-btn { width:auto; min-width:140px; padding:9px 13px; justify-content:flex-start; gap:8px; font-size:.75rem; font-weight:500; color:var(--text2); border-bottom:none; border-top:1px solid var(--border); }
-#gpsMenu .ico-btn:last-child { border-top:1px solid var(--border); }
-.ico-btn.trk-on { background:var(--blue)!important; color:#fff!important; animation:tpulse 1.5s infinite; }
+/* ── GPS STACK — bottom left, always visible ── */
+#stackGps { left:12px; bottom:12px; display:flex; flex-direction:column; gap:6px; }
+.gps-pill { position:relative; background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.13); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:500; display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; color:var(--text2); cursor:pointer; white-space:nowrap; border:none; }
+.gps-pill:active { background:rgba(240,240,245,.95); }
+.gps-pill.trk-on { background:var(--blue)!important; color:#fff!important; border-color:var(--blue)!important; animation:tpulse 1.5s infinite; }
 @keyframes tpulse { 0%,100%{box-shadow:0 0 0 0 rgba(52,120,246,.4)} 50%{box-shadow:0 0 0 8px rgba(52,120,246,0)} }
 
 /* ── LAYER PILL — top left, right of zoom ── */
@@ -62,7 +62,6 @@ header { background:var(--surface); padding:10px 16px; display:flex; align-items
 /* ── SPEED PANEL — inside mode pill, shown when run selected ── */
 .cond-divider { padding:7px 13px 4px; font-size:.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; border-top:1px solid var(--border); }
 .mbtn.cond.active { background:rgba(52,120,246,.1); color:var(--blue); font-weight:600; }
-#speedPanel { display:none; }
 .speed-label { font-size:.68rem; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; padding:8px 13px 0; }
 .speed-row { display:flex; align-items:center; gap:8px; padding:0 13px 8px; }
 .speed-row input[type=range] { flex:1; accent-color:var(--green); min-width:100px; }

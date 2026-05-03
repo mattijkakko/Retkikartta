@@ -207,7 +207,12 @@
   }
 
   // ── Elevation ───────────────────────────────────────────────────────────────
-  function scheduleEle() { clearTimeout(eleTimer); if (st.waypoints.length > 0) eleTimer = setTimeout(fetchEle, 1200) }
+  function scheduleEle() {
+    clearTimeout(eleTimer)
+    // Skip API fetch if elevations are already populated (e.g. from GPX import)
+    if (st.waypoints.length > 0 && st.routeElevations.length !== st.waypoints.length)
+      eleTimer = setTimeout(fetchEle, 1200)
+  }
   async function fetchEle() {
     if (!st.waypoints.length) return
     try {
@@ -294,6 +299,15 @@
           map.fitBounds(trackLine.getBounds(), { padding: [30, 30] })
         } else {
           saveRouteState(); st.waypoints = pts; st.wpTypes = pts.map(() => 'drawn')
+          // Use elevation embedded in GPX if all points have it; otherwise fetch from API
+          const embeddedEles = pts.map(p => p.ele ?? null)
+          if (embeddedEles.every(e => e !== null)) {
+            st.routeElevations = embeddedEles
+            const last = embeddedEles[embeddedEles.length - 1]
+            if (last !== null) st.currentEle = Math.round(last) + ' m'
+          } else {
+            st.routeElevations = []
+          }
           redraw(); if (segLines.length) map.fitBounds(segLines[0].getBounds(), { padding: [30, 30] })
         }
         showToast(`📂 ${name || file.name} (${pts.length} pistettä)`)
@@ -344,6 +358,16 @@
       showToast('📂 Edellinen reitti palautettu')
     }
     showToast('Tervetuloa Retkikarttaan! 🌲')
+
+    // Locate user on startup if geolocation is available
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async pos => {
+        const ll = L.latLng(pos.coords.latitude, pos.coords.longitude)
+        map.setView(ll, 13); placeGpsDot(ll, pos.coords.accuracy)
+        if (pos.coords.altitude !== null) st.currentEle = Math.round(pos.coords.altitude) + ' m'
+        else { const e = await fetchSingleElevation(ll); if (e !== null) st.currentEle = Math.round(e) + ' m' }
+      }, () => {}, { enableHighAccuracy: true, timeout: 10000 })
+    }
   })
 
   onDestroy(() => {
@@ -422,17 +446,14 @@
     </div>
   </div>
 
-  <!-- GPS PILL -->
-  <div class="pill" id="stackGps">
-    <button class="toggle-btn" onclick={() => st.openMenu = st.openMenu === 'gps' ? null : 'gps'}>🛰️</button>
-    <div class="collapse-menu" class:open={st.openMenu === 'gps'}>
-      <button class="ico-btn" class:trk-on={st.tracking} onclick={toggleTracking}>
-        {st.tracking ? '⏹️' : '🛰️'} GPS-seuranta
-      </button>
-      <button class="ico-btn" onclick={locateOnce}>📍 Sijaintini</button>
-      <button class="ico-btn" onclick={undoLast}>↩️ Kumoa</button>
-      <button class="ico-btn" onclick={clearAll} style="color:var(--red)">🗑️ Tyhjennä</button>
-    </div>
+  <!-- GPS BUTTONS — always visible, separate pills -->
+  <div id="stackGps">
+    <button class="gps-pill" class:trk-on={st.tracking} onclick={toggleTracking}>
+      {st.tracking ? '⏹️' : '🛰️'} {st.tracking ? 'Stop' : 'GPS-seuranta'}
+    </button>
+    <button class="gps-pill" onclick={locateOnce}>📍 Sijaintini</button>
+    <button class="gps-pill" onclick={undoLast}>↩️ Kumoa</button>
+    <button class="gps-pill" onclick={clearAll} style="color:var(--red)">🗑️ Tyhjennä</button>
   </div>
 
   <!-- ACTION PILL -->
