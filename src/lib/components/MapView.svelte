@@ -354,6 +354,22 @@
     searchResults = []
   }
 
+  function onSearchStartRoute(r) {
+    const ll = L.latLng(r.lat, r.lng)
+    map.setView(ll, 14)
+    st.searchOpen = false
+    searchResults = []
+    // Start routing mode and add this location as first waypoint
+    stopDraw(); stopFreehand()
+    if (st.activeDrawMode === 'routing') cancelRouting()
+    st.activeDrawMode = 'routing'
+    routeClickPts = []; routeMarkers.forEach(m => rl(m)); routeMarkers = []
+    st.openMenu = null; showUseLoc = false; showLoopConf = false
+    map.getContainer().style.cursor = 'crosshair'
+    addRoutePoint(ll)
+    showToast(`🧭 Reitti alkaa: ${r.name}`)
+  }
+
   function onSearchAddToRoute(r) {
     searchRoutePts = [...searchRoutePts, r]
     const ll = L.latLng(r.lat, r.lng)
@@ -490,6 +506,7 @@
       searching={searchSearching}
       onQueryInput={onSearchQuery}
       onSelect={onSearchSelect}
+      onStartRoute={onSearchStartRoute}
       onAddToRoute={onSearchAddToRoute}
       onRemoveRoute={onSearchRemoveRoute}
       onBuildRoute={onSearchBuildRoute}

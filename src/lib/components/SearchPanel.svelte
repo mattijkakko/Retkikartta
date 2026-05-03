@@ -1,5 +1,5 @@
 <script>
-  let { results, routePts, searching, onQueryInput, onSelect, onAddToRoute, onRemoveRoute, onBuildRoute, onClose } = $props()
+  let { results, routePts, searching, onQueryInput, onSelect, onAddToRoute, onStartRoute, onRemoveRoute, onBuildRoute, onClose } = $props()
 
   let query = $state('')
 
@@ -12,10 +12,9 @@
     <span class="search-icon">🔍</span>
     <input
       type="search"
-      placeholder="Hae osoite tai koordinaatit…"
+      placeholder="Hae osoite tai paikka…"
       bind:value={query}
       oninput={handleInput}
-      autofocus
     >
     <button class="search-close" onclick={onClose}>✕</button>
   </div>
@@ -34,6 +33,7 @@
             <span class="sr-main">{r.name}</span>
             <span class="sr-sub">{r.fullName.split(',').slice(1, 3).join(',').trim()}</span>
           </button>
+          <button class="search-add-btn" onclick={() => { onStartRoute(r); clear() }} title="Aloita reitti täältä">🧭</button>
           <button class="search-add-btn" onclick={() => { onAddToRoute(r); clear() }} title="Lisää reittipisteeksi">+</button>
         </div>
       {/each}
