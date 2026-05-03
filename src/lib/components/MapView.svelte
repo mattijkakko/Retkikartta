@@ -293,11 +293,13 @@
       try {
         const { pts, isTrk, name } = parseGPX(e.target.result)
         if (!pts.length) { showToast('⚠️ Ei pisteitä'); return }
-        if (isTrk || pts.length > 50) {
+        if (isTrk) {
+          // GPS track log (already walked) — show as blue line only
           trackLine = rl(trackLine); st.trackPts = pts
           trackLine = L.polyline(pts, { color: VAR_BLUE, weight: 4, opacity: 0.85, lineJoin: 'round', lineCap: 'round' }).addTo(map)
           map.fitBounds(trackLine.getBounds(), { padding: [30, 30] })
         } else {
+          // Planned route or waypoints — import as waypoints so stats work
           saveRouteState(); st.waypoints = pts; st.wpTypes = pts.map(() => 'drawn')
           // Use elevation embedded in GPX if all points have it; otherwise fetch from API
           const embeddedEles = pts.map(p => p.ele ?? null)

@@ -36,7 +36,7 @@ header { background:var(--surface); padding:10px 16px; display:flex; align-items
 .collapse-menu.open { display:flex; }
 
 /* ── GPS STACK — bottom left, always visible ── */
-#stackGps { left:12px; bottom:12px; display:flex; flex-direction:column; gap:6px; }
+#stackGps { position:absolute; left:12px; bottom:12px; display:flex; flex-direction:column; gap:6px; z-index:500; }
 .gps-pill { position:relative; background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.13); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:500; display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; color:var(--text2); cursor:pointer; white-space:nowrap; border:none; }
 .gps-pill:active { background:rgba(240,240,245,.95); }
 .gps-pill.trk-on { background:var(--blue)!important; color:#fff!important; border-color:var(--blue)!important; animation:tpulse 1.5s infinite; }
