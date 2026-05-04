@@ -58,6 +58,8 @@ header { background:var(--surface); padding:10px 16px; display:flex; align-items
 .mbtn { display:flex; align-items:center; gap:8px; padding:9px 13px; font-family:inherit; font-size:.75rem; font-weight:500; background:none; border:none; border-top:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--text2); transition:background .12s; min-width:115px; }
 .mbtn:active { background:var(--bg); }
 .mbtn.active { background:rgba(0,0,0,.06); color:#111111; font-weight:700; }
+.mbtn .ldot { background:var(--border); }
+.mbtn.active .ldot { background:#111111; }
 
 /* ── SPEED PANEL — inside mode pill, shown when run selected ── */
 .cond-divider { padding:7px 13px 4px; font-size:.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; border-top:1px solid var(--border); }

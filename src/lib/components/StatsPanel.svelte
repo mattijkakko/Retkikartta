@@ -55,8 +55,8 @@
     <div class="stat-card"><div class="sv">{timeStr}</div><div class="sl">Arvioitu aika</div></div>
   </div>
   <div class="stats-row2">
-    <div class="stat-card"><div class="sv">{statUp}</div><div class="sl">⬆ Nousu</div></div>
-    <div class="stat-card"><div class="sv">{statDown}</div><div class="sl">⬇ Lasku</div></div>
+    <div class="stat-card"><div class="sv">{statUp}</div><div class="sl">↑ Nousu</div></div>
+    <div class="stat-card"><div class="sv">{statDown}</div><div class="sl">↓ Lasku</div></div>
     <div class="stat-card"><div class="sv">{st.currentEle}</div><div class="sl">Korkeus nyt</div></div>
   </div>
 </div>

@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import L from 'leaflet'
   import { st, showToast } from '../state.svelte.js'
-  import { haversine, rdp, catmull, trkDist, fmtDist, RDP_EPSILON, HISTORY_LIMIT, GPS_MIN_INTERVAL_MS, COND_COEFF, COND_LABEL, MODE_ICONS } from '../utils.js'
+  import { haversine, rdp, catmull, trkDist, fmtDist, RDP_EPSILON, HISTORY_LIMIT, GPS_MIN_INTERVAL_MS, COND_COEFF, COND_LABEL } from '../utils.js'
   import { fetchRoute, fetchElevation, fetchSingleElevation, geocode } from '../api.js'
   import { exportGPX, parseGPX } from '../gpx.js'
   import { saveTrack, clearTrackStorage, loadTrack } from '../storage.js'
@@ -74,6 +74,7 @@
     pin:    `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><path d="M8 2 C5.5 2 3.5 4 3.5 6.5 C3.5 10.5 8 14.5 8 14.5 C8 14.5 12.5 10.5 12.5 6.5 C12.5 4 10.5 2 8 2 Z"/><circle cx="8" cy="6.5" r="2"/></svg>`,
     undo:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><path d="M3.5 8.5 A4.5 4.5 0 1 1 8 13.5"/><polyline points="3.5,4.5 3.5,8.5 7.5,8.5"/></svg>`,
     trash:  `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><line x1="2" y1="4.5" x2="14" y2="4.5"/><path d="M5 4.5 L5 13.5 L11 13.5 L11 4.5"/><path d="M6.5 2.5 L9.5 2.5"/><line x1="7" y1="7" x2="7" y2="11.5"/><line x1="9" y1="7" x2="9" y2="11.5"/></svg>`,
+    person: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><circle cx="8" cy="3.5" r="2"/><line x1="8" y1="5.5" x2="8" y2="10"/><line x1="5" y1="7.5" x2="11" y2="7.5"/><line x1="8" y1="10" x2="5.5" y2="14"/><line x1="8" y1="10" x2="10.5" y2="14"/></svg>`,
   }
 
   const hasTrack = $derived(st.trackPts.length > 1)
@@ -697,16 +698,16 @@
     { id: 'hiking',       label: '+ Reitit' },
   ]
   const MODES = [
-    { id: 'walk', label: '🚶 Kävely' },
-    { id: 'dog',  label: '🐕 Koira' },
-    { id: 'run',  label: '🏃 Juoksu' },
+    { id: 'walk', label: 'Kävely' },
+    { id: 'dog',  label: 'Koira' },
+    { id: 'run',  label: 'Juoksu' },
   ]
   const CONDS = [
-    { id: 'summer', label: '☀️ Kesä / kuiva' },
-    { id: 'autumn', label: '🍂 Syksy / märkä' },
-    { id: 'crust',  label: '❄️ Talvi / hanki' },
-    { id: 'snow30', label: '🌨️ Lumi <30 cm' },
-    { id: 'snow60', label: '🌨️ Lumi >30 cm' },
+    { id: 'summer', label: 'Kesä / kuiva' },
+    { id: 'autumn', label: 'Syksy / märkä' },
+    { id: 'crust',  label: 'Talvi / hanki' },
+    { id: 'snow30', label: 'Lumi <30 cm' },
+    { id: 'snow60', label: 'Lumi >30 cm' },
   ]
 
   function setMode(m) {
@@ -753,10 +754,10 @@
 
   <!-- MODE PILL -->
   <div class="pill" id="stackMode">
-    <button class="toggle-btn" onclick={() => st.openMenu = st.openMenu === 'mode' ? null : 'mode'}>{MODE_ICONS[st.currentMode]}</button>
+    <button class="toggle-btn" onclick={() => st.openMenu = st.openMenu === 'mode' ? null : 'mode'}>{@html IC.person}</button>
     <div class="collapse-menu" class:open={st.openMenu === 'mode'}>
       {#each MODES as m}
-        <button class="mbtn" class:active={st.currentMode === m.id} onclick={() => setMode(m.id)}>{m.label}</button>
+        <button class="mbtn" class:active={st.currentMode === m.id} onclick={() => setMode(m.id)}><span class="ldot"></span>{m.label}</button>
       {/each}
       {#if st.currentMode === 'run'}
         <div id="speedPanel">
@@ -769,7 +770,7 @@
       {/if}
       <div class="cond-divider">Maasto-olosuhteet</div>
       {#each CONDS as c}
-        <button class="mbtn cond" class:active={st.currentCond === c.id} onclick={() => setCond(c.id)}>{c.label}</button>
+        <button class="mbtn cond" class:active={st.currentCond === c.id} onclick={() => setCond(c.id)}><span class="ldot"></span>{c.label}</button>
       {/each}
     </div>
   </div>
