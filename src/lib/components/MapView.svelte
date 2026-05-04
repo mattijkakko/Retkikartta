@@ -94,6 +94,16 @@
   function addPt(ll, type) { saveRouteState(); st.waypoints = [...st.waypoints, ll]; st.wpTypes = [...st.wpTypes, type]; redraw() }
 
   function undoLast() {
+    if (st.activeDrawMode === 'routing') {
+      if (!routeClickPts.length) { showToast('Ei kumottavaa'); return }
+      routeClickPts.pop()
+      const m = routeMarkers.pop(); if (m) rl(m)
+      const n = routeClickPts.length
+      if (n === 0) { routeIndText = '🧭 Napauta lähtöpiste kartalle'; showUseLoc = true; showLoopConf = false }
+      else if (n === 1) { routeIndText = '🧭 Napauta seuraava piste tai määränpää'; showLoopConf = false }
+      else routeIndText = `🧭 ${n} pistettä — Valmis tai Ympyrä`
+      showToast('↩️ Kumottu'); return
+    }
     if (!st.history.length) { showToast('Ei kumottavaa'); return }
     const s = st.history.pop(); st.waypoints = s.wp; st.wpTypes = s.wt; redraw(); showToast('↩️ Kumottu')
   }
@@ -132,15 +142,30 @@
   }
   function cleanFH() { freehandLine = rl(freehandLine); freehandPts = []; freehandActive = false; freehandStarted = false }
 
-  function closestIdx(ll) {
-    let best = 0, bestD = Infinity
-    st.waypoints.forEach((p, i) => { const d = haversine(ll, p); if (d < bestD) { bestD = d; best = i } })
-    return best
+  function closestCandidates(ll, n) {
+    return st.waypoints
+      .map((p, i) => ({ i, d: haversine(ll, p) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, n)
+      .map(x => x.i)
   }
   function spliceFH(pts) {
-    if (pts.length < 2) return; saveRouteState()
+    if (pts.length < 2) return
+    saveRouteState()
     if (!st.waypoints.length) { st.waypoints = pts; st.wpTypes = pts.map(() => 'drawn'); redraw(); showToast('✅ Vapaa reitti lisätty'); return }
-    const si = closestIdx(pts[0]), ei = closestIdx(pts[pts.length - 1])
+    const pStart = pts[0], pEnd = pts[pts.length - 1], pMid = pts[Math.floor(pts.length / 2)]
+    const sCands = closestCandidates(pStart, 20), eCands = closestCandidates(pEnd, 20)
+    let si = 0, ei = Math.min(1, st.waypoints.length - 1), bestScore = Infinity
+    for (const a of sCands) {
+      for (const b of eCands) {
+        if (a === b) continue
+        const lo = Math.min(a, b), hi = Math.max(a, b)
+        const score = haversine(pStart, st.waypoints[a])
+                    + haversine(pEnd,   st.waypoints[b])
+                    + haversine(pMid,   st.waypoints[Math.floor((lo + hi) / 2)])
+        if (score < bestScore) { bestScore = score; si = a; ei = b }
+      }
+    }
     const lo = Math.min(si, ei), hi = Math.max(si, ei)
     const ordered = si <= ei ? pts : [...pts].reverse()
     st.waypoints = [...st.waypoints.slice(0, lo + 1), ...ordered, ...st.waypoints.slice(hi)]
