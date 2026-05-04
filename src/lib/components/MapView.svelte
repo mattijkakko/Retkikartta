@@ -23,7 +23,7 @@
   let freehandPts = [], freehandActive = false, freehandStarted = false
   let watchId = null, trackTimer = null, wakeLock = null, lastGpsTime = 0, eleTimer = null
 
-  let routeAnchors  = []   // L.latLng[] — user click points, kept after buildRoute
+  let routeAnchors  = $state([])   // L.latLng[] — user click points, kept after buildRoute
   let routeSegments = []   // L.latLng[][] — one coord array per anchor-to-anchor leg
   let arrowMarkers  = []   // L.Marker[] — direction arrows on routed segments
   let editMarkers   = []   // L.Marker[] — draggable handles in edit mode
@@ -60,6 +60,7 @@
   const hasTrack = $derived(st.trackPts.length > 1)
   const hasRoute = $derived(st.waypoints.length > 1)
   const hasAnchors = $derived(routeAnchors.length >= 2)
+  const canEdit    = $derived(st.waypoints.length >= 2)
   const actionIcon = $derived(
     st.activeDrawMode === 'freehand' ? '🖊️'
     : st.activeDrawMode === 'routing' ? '🧭'
@@ -339,10 +340,25 @@
     // routeAnchors/routeSegments intentionally kept for edit mode
   }
   // ── Edit mode ────────────────────────────────────────────────────────────────
+  function initAnchorsFromWaypoints() {
+    const wp = st.waypoints
+    if (wp.length < 2) return
+    let totalDist = 0
+    for (let i = 1; i < wp.length; i++) totalDist += haversine(wp[i-1], wp[i])
+    const target = Math.min(12, Math.max(2, Math.round(totalDist / 0.3)))
+    const step = (wp.length - 1) / (target - 1)
+    const anchors = []
+    for (let k = 0; k < target - 1; k++) anchors.push(L.latLng(wp[Math.round(k * step)].lat, wp[Math.round(k * step)].lng))
+    anchors.push(L.latLng(wp[wp.length - 1].lat, wp[wp.length - 1].lng))
+    routeAnchors = anchors
+    routeSegments = splitRouteByAnchors(wp, anchors)
+  }
+
   function toggleEdit() { st.activeDrawMode === 'edit' ? stopEdit() : startEdit() }
   function startEdit() {
-    if (!hasAnchors) { showToast('⚠️ Ei reititystä muokattavaksi'); return }
+    if (!canEdit) { showToast('⚠️ Ei reittiä muokattavaksi'); return }
     stopDraw(); stopFreehand(); cancelRouting()
+    if (!hasAnchors) initAnchorsFromWaypoints()
     st.activeDrawMode = 'edit'; st.openMenu = null
     map.getContainer().style.cursor = 'grab'
     showToast('✋ Vedä ankkuripisteitä reitin muuttamiseksi')
@@ -775,7 +791,7 @@
       {/if}
       <button class="abtn" class:a-edit={st.activeDrawMode === 'edit'}
         onclick={toggleEdit}
-        style={!hasAnchors ? 'opacity:.4;cursor:not-allowed' : ''}
+        style={!canEdit ? 'opacity:.4;cursor:not-allowed' : ''}
       ><span class="ai">✋</span>Muokkaa reittiä</button>
       <button class="abtn" onclick={() => fileInput.click()}><span class="ai">📂</span>Avaa GPX</button>
       {#if hasTrack}
