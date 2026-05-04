@@ -210,7 +210,7 @@
     scheduleEle()
   }
 
-  function addPt(ll, type) { saveRouteState(); st.waypoints = [...st.waypoints, ll]; st.wpTypes = [...st.wpTypes, type]; redraw() }
+  function addPt(ll, type) { saveRouteState(); st.waypoints = [...st.waypoints, ll]; st.wpTypes = [...st.wpTypes, type]; routeAnchors = []; routeSegments = []; redraw() }
 
   function undoLast() {
     if (st.activeDrawMode === 'routing') {
@@ -278,7 +278,7 @@
   function spliceFH(pts) {
     if (pts.length < 2) return
     saveRouteState()
-    if (!st.waypoints.length) { st.waypoints = pts; st.wpTypes = pts.map(() => 'drawn'); redraw(); showToast('✅ Vapaa reitti lisätty'); return }
+    if (!st.waypoints.length) { st.waypoints = pts; st.wpTypes = pts.map(() => 'drawn'); routeAnchors = []; routeSegments = []; redraw(); showToast('✅ Vapaa reitti lisätty'); return }
     const pStart = pts[0], pEnd = pts[pts.length - 1], pMid = pts[Math.floor(pts.length / 2)]
     const sCands = closestCandidates(pStart, 20), eCands = closestCandidates(pEnd, 20)
     let si = 0, ei = Math.min(1, st.waypoints.length - 1), bestScore = Infinity
@@ -296,7 +296,7 @@
     const ordered = si <= ei ? pts : [...pts].reverse()
     st.waypoints = [...st.waypoints.slice(0, lo + 1), ...ordered, ...st.waypoints.slice(hi)]
     st.wpTypes   = [...st.wpTypes.slice(0, lo + 1), ...ordered.map(() => 'drawn'), ...st.wpTypes.slice(hi)]
-    st.routeElevations = []; redraw(); showToast('✅ Osuus korvattu')
+    st.routeElevations = []; routeAnchors = []; routeSegments = []; redraw(); showToast('✅ Osuus korvattu')
   }
 
   function fhStart(rx, ry) {
