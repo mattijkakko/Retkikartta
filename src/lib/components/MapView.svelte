@@ -57,23 +57,42 @@
   let trkAccVal     = $state('–')
   let trkTimeStr    = $state('0:00')
 
+  // ── SVG icons ────────────────────────────────────────────────────────────────
+  const _s = `stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`
+  const IC = {
+    pencil: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><path d="M11.5 2.5 L13.5 4.5 L5 13 L2 14 L3 11 Z"/><line x1="9.5" y1="4" x2="12" y2="6.5"/></svg>`,
+    pen:    `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><path d="M2 13 Q5 3 8 8 Q11 13 14 3"/></svg>`,
+    nav:    `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><line x1="4.5" y1="11.5" x2="12.5" y2="3.5"/><polyline points="7.5,3 13,3 13,8.5"/><circle cx="4.5" cy="11.5" r="1.8" fill="currentColor" stroke="none"/></svg>`,
+    move:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/><line x1="8" y1="1.5" x2="8" y2="5.5"/><line x1="8" y1="10.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="5.5" y2="8"/><line x1="10.5" y1="8" x2="14.5" y2="8"/><polyline points="6.5,3 8,1.5 9.5,3"/><polyline points="6.5,13 8,14.5 9.5,13"/><polyline points="3,6.5 1.5,8 3,9.5"/><polyline points="13,6.5 14.5,8 13,9.5"/></svg>`,
+    loop:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><path d="M14.5 8.5 A6.5 6.5 0 1 1 9.5 2.3"/><polyline points="9.5,0.5 9.5,4 13,4"/></svg>`,
+    check:  `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,9 6,13 14,3"/></svg>`,
+    folder: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><path d="M2 5.5 L2 13 L14 13 L14 7 L7 7 L5.5 5.5 Z"/><line x1="5.5" y1="7" x2="14" y2="7"/></svg>`,
+    export: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><line x1="8" y1="2" x2="8" y2="11"/><polyline points="5,8 8,11 11,8"/><line x1="3" y1="14" x2="13" y2="14"/></svg>`,
+    layers: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><polyline points="1,8 8,4.5 15,8 8,11.5 1,8"/><polyline points="1,5.5 8,2 15,5.5"/><polyline points="1,10.5 8,14 15,10.5"/></svg>`,
+    sat:    `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><circle cx="7.5" cy="8.5" r="2.5"/><path d="M4.8 5.8 A3.8 3.8 0 0 1 10.2 5.8"/><path d="M2.5 3.5 A7.2 7.2 0 0 1 12.5 3.5"/><line x1="10.5" y1="11" x2="14" y2="14"/></svg>`,
+    stop:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="4" width="8" height="8" rx="1.5"/></svg>`,
+    pin:    `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><path d="M8 2 C5.5 2 3.5 4 3.5 6.5 C3.5 10.5 8 14.5 8 14.5 C8 14.5 12.5 10.5 12.5 6.5 C12.5 4 10.5 2 8 2 Z"/><circle cx="8" cy="6.5" r="2"/></svg>`,
+    undo:   `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><path d="M3.5 8.5 A4.5 4.5 0 1 1 8 13.5"/><polyline points="3.5,4.5 3.5,8.5 7.5,8.5"/></svg>`,
+    trash:  `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ${_s}><line x1="2" y1="4.5" x2="14" y2="4.5"/><path d="M5 4.5 L5 13.5 L11 13.5 L11 4.5"/><path d="M6.5 2.5 L9.5 2.5"/><line x1="7" y1="7" x2="7" y2="11.5"/><line x1="9" y1="7" x2="9" y2="11.5"/></svg>`,
+  }
+
   const hasTrack = $derived(st.trackPts.length > 1)
   const hasRoute = $derived(st.waypoints.length > 1)
   const hasAnchors = $derived(routeAnchors.length >= 2)
   const canEdit    = $derived(st.waypoints.length >= 2)
   const actionIcon = $derived(
-    st.activeDrawMode === 'freehand' ? '🖊️'
-    : st.activeDrawMode === 'routing' ? '🧭'
-    : st.activeDrawMode === 'edit'    ? '✋'
-    : '✏️'
+    st.activeDrawMode === 'freehand' ? IC.pen
+    : st.activeDrawMode === 'routing' ? IC.nav
+    : st.activeDrawMode === 'edit'    ? IC.move
+    : IC.pencil
   )
 
   function rl(l) { if (l) try { map.removeLayer(l) } catch(e){} return null }
 
   function routeColor() {
-    if (st.activeBase === 'satellite' || st.activeBase === 'ortho') return '#ffeb3b'
+    if (st.activeBase === 'satellite' || st.activeBase === 'ortho') return '#faff00'
     if (st.activeBase === 'topo'     || st.activeBase === 'mml')    return '#e53935'
-    return '#b07d2a'
+    return '#111111'
   }
 
   // ── Layers ──────────────────────────────────────────────────────────────────
@@ -722,7 +741,7 @@
 
   <!-- LAYER PILL -->
   <div class="pill" id="stackLayer">
-    <button class="layer-toggle" onclick={() => st.openMenu = st.openMenu === 'layer' ? null : 'layer'} title="Karttapohja">🗺️</button>
+    <button class="layer-toggle" onclick={() => st.openMenu = st.openMenu === 'layer' ? null : 'layer'} title="Karttapohja">{@html IC.layers}</button>
     <div class="layer-menu" class:open={st.openMenu === 'layer'}>
       {#each BASE_LAYERS as l}
         <button class="lbtn" class:active={l.id === 'hiking' ? st.hikeOn : st.activeBase === l.id} onclick={() => setLayer(l.id)}>
@@ -760,19 +779,19 @@
     <button class="gps-pill" class:trk-on={st.tracking} title="GPS-seuranta"
       onpointerdown={e => lpStart(e, st.tracking ? 'GPS-seuranta: Stop' : 'GPS-seuranta')}
       onpointerup={lpEnd} onpointercancel={lpEnd} onclick={toggleTracking}
-    >{st.tracking ? '⏹️' : '🛰️'}</button>
+    >{@html st.tracking ? IC.stop : IC.sat}</button>
     <button class="gps-pill" title="Sijaintini"
       onpointerdown={e => lpStart(e, 'Sijaintini')}
       onpointerup={lpEnd} onpointercancel={lpEnd} onclick={locateOnce}
-    >📍</button>
+    >{@html IC.pin}</button>
     <button class="gps-pill" title="Kumoa"
       onpointerdown={e => lpStart(e, 'Kumoa')}
       onpointerup={lpEnd} onpointercancel={lpEnd} onclick={undoLast}
-    >↩️</button>
+    >{@html IC.undo}</button>
     <button class="gps-pill" title="Tyhjennä" style="color:var(--red)"
       onpointerdown={e => lpStart(e, 'Tyhjennä')}
       onpointerup={lpEnd} onpointercancel={lpEnd} onclick={clearAll}
-    >🗑️</button>
+    >{@html IC.trash}</button>
   </div>
   {#if lpVisible}
     <div class="lp-tooltip" style="left:{lpPos.x}px; top:{lpPos.y}px">{lpLabel}</div>
@@ -780,25 +799,25 @@
 
   <!-- ACTION PILL -->
   <div class="pill" id="stackAction">
-    <button class="toggle-btn" onclick={() => st.openMenu = st.openMenu === 'action' ? null : 'action'}>{actionIcon}</button>
+    <button class="toggle-btn" onclick={() => st.openMenu = st.openMenu === 'action' ? null : 'action'}>{@html actionIcon}</button>
     <div class="collapse-menu" class:open={st.openMenu === 'action'}>
-      <button class="abtn" class:a-draw={st.activeDrawMode === 'draw'} onclick={toggleDraw}><span class="ai">✏️</span>Piirrä pisteitä</button>
-      <button class="abtn" class:a-free={st.activeDrawMode === 'freehand'} onclick={toggleFreehand}><span class="ai">🖊️</span>Vapaa piirto</button>
-      <button class="abtn" class:a-route={st.activeDrawMode === 'routing'} onclick={toggleRouting}><span class="ai">🧭</span>Reititä</button>
+      <button class="abtn" class:a-draw={st.activeDrawMode === 'draw'} onclick={toggleDraw}><span class="ai">{@html IC.pencil}</span>Piirrä pisteitä</button>
+      <button class="abtn" class:a-free={st.activeDrawMode === 'freehand'} onclick={toggleFreehand}><span class="ai">{@html IC.pen}</span>Vapaa piirto</button>
+      <button class="abtn" class:a-route={st.activeDrawMode === 'routing'} onclick={toggleRouting}><span class="ai">{@html IC.nav}</span>Reititä</button>
       {#if st.activeDrawMode === 'routing' && showLoopConf}
-        <button class="abtn" onclick={closeLoop}><span class="ai">🔄</span>Sulje ympyrä</button>
-        <button class="abtn" onclick={confirmRoute}><span class="ai">✅</span>Valmis</button>
+        <button class="abtn" onclick={closeLoop}><span class="ai">{@html IC.loop}</span>Sulje ympyrä</button>
+        <button class="abtn" onclick={confirmRoute}><span class="ai">{@html IC.check}</span>Valmis</button>
       {/if}
       <button class="abtn" class:a-edit={st.activeDrawMode === 'edit'}
         onclick={toggleEdit}
         style={!canEdit ? 'opacity:.4;cursor:not-allowed' : ''}
-      ><span class="ai">✋</span>Muokkaa reittiä</button>
-      <button class="abtn" onclick={() => fileInput.click()}><span class="ai">📂</span>Avaa GPX</button>
+      ><span class="ai">{@html IC.move}</span>Muokkaa reittiä</button>
+      <button class="abtn" onclick={() => fileInput.click()}><span class="ai">{@html IC.folder}</span>Avaa GPX</button>
       {#if hasTrack}
-        <button class="abtn" onclick={() => doExportGPX('track')}><span class="ai">⬇️</span>Vie tallenne</button>
+        <button class="abtn" onclick={() => doExportGPX('track')}><span class="ai">{@html IC.export}</span>Vie tallenne</button>
       {/if}
       {#if hasRoute}
-        <button class="abtn" onclick={() => doExportGPX('route')}><span class="ai">⬇️</span>Vie reitti</button>
+        <button class="abtn" onclick={() => doExportGPX('route')}><span class="ai">{@html IC.export}</span>Vie reitti</button>
       {/if}
     </div>
   </div>
@@ -806,9 +825,9 @@
   <input type="file" bind:this={fileInput} accept=".gpx,.xml,*/*" style="display:none" onchange={doImportGPX}>
 
   <!-- Indicators -->
-  <div id="drawInd"  class="indicator" class:vis={st.activeDrawMode === 'draw'}>✏️ Napauta karttaan lisätäksesi pisteitä</div>
-  <div id="freeInd"  class="indicator" class:vis={st.activeDrawMode === 'freehand'}>🖊️ Piirrä sormella — vapauta lopettaaksesi</div>
-  <div id="editInd"  class="indicator" class:vis={st.activeDrawMode === 'edit'}>✋ Vedä ankkuripisteitä — reitin muokkaus</div>
+  <div id="drawInd"  class="indicator" class:vis={st.activeDrawMode === 'draw'}>Napauta karttaan lisätäksesi pisteitä</div>
+  <div id="freeInd"  class="indicator" class:vis={st.activeDrawMode === 'freehand'}>Piirrä sormella — vapauta lopettaaksesi</div>
+  <div id="editInd"  class="indicator" class:vis={st.activeDrawMode === 'edit'}>Vedä ankkuripisteitä — reitin muokkaus</div>
   <div id="routeInd" class="indicator route-ind-wrap" class:vis={st.activeDrawMode === 'routing'}>
     <span>{routeIndText}</span>
     {#if showUseLoc}<button id="btnUseLocation" onclick={useLocationAsStart}>📍 Sijaintini</button>{/if}
@@ -832,7 +851,7 @@
   {/if}
 
   {#if spinning}
-    <div id="spinner" class="vis"><span class="spin">⏳</span> Haetaan reittiä…</div>
+    <div id="spinner" class="vis"><span class="spin" style="display:flex">{@html IC.nav}</span> Haetaan reittiä…</div>
   {/if}
 
   <div id="toast" class:show={st.toastVisible}>{st.toastMsg}</div>
