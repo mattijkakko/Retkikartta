@@ -11,7 +11,7 @@
     { id: 'hiking',    label: '+ Reitit' },
   ]
 
-  const TOAST = { osm:'🗺️ OpenStreetMap', mml:'🇫🇮 MML Maastokartta', topo:'🏔️ Topokartta', satellite:'🛸 Satelliitti', ortho:'📷 MML Ortoilmakuva' }
+  const TOAST = { osm:'🗺️ OpenStreetMap', mml:'🇫🇮 MML Maastokartta', topo:'🏔️ Topokartta', satellite:'🌐 Satelliitti', ortho:'📷 MML Ortoilmakuva' }
 
   let { onSetLayer } = $props()
 

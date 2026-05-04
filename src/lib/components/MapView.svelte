@@ -8,7 +8,7 @@
   import { saveTrack, clearTrackStorage, loadTrack } from '../storage.js'
   import SearchPanel from './SearchPanel.svelte'
 
-  const MML_KEY  = '113f9471-0872-42fa-9fe7-cbedae6572b8'
+  const MML_KEY  = import.meta.env.VITE_MML_KEY ?? ''
   const MML_BASE = 'https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0'
   const VAR_BLUE = '#3478f6'
   const LAYER_TOASTS = { osm:'🗺️ OpenStreetMap', mml:'🇫🇮 MML Maastokartta', taustakartta:'🗺️ MML Taustakartta', topo:'🏔️ Topokartta', satellite:'🛸 Satelliitti', ortho:'📷 MML Ortoilmakuva' }
@@ -33,6 +33,19 @@
   let routeIndText  = $state('🧭 Napauta lähtöpiste kartalle')
   let showUseLoc    = $state(false)
   let showLoopConf  = $state(false)
+  let lpLabel   = $state('')
+  let lpPos     = $state({ x: 0, y: 0 })
+  let lpVisible = $state(false)
+  let lpTimer   = null
+
+  function lpStart(e, label) {
+    lpTimer = setTimeout(() => { lpLabel = label; lpPos = { x: e.clientX, y: e.clientY }; lpVisible = true }, 500)
+  }
+  function lpEnd() {
+    clearTimeout(lpTimer); lpTimer = null
+    if (lpVisible) setTimeout(() => { lpVisible = false }, 1200)
+  }
+
   let spinning      = $state(false)
   let trkSpeedVal   = $state('0.0 km/h')
   let trkAccVal     = $state('–')
@@ -75,18 +88,34 @@
     if (st.history.length > HISTORY_LIMIT) st.history.shift()
   }
 
+  function applyOffset(latlngs, runIdx) {
+    if (runIdx % 2 === 0 || latlngs.length < 2) return latlngs
+    const zoom = map.getZoom()
+    const midLat = latlngs[Math.floor(latlngs.length / 2)].lat * Math.PI / 180
+    const mPerPx = 156543.03392 * Math.cos(midLat) / Math.pow(2, zoom)
+    const offsetM = 5 * mPerPx
+    const dLat = offsetM / 111320
+    const dLng = offsetM / (111320 * Math.cos(midLat))
+    return latlngs.map((ll, i) => {
+      const a = latlngs[Math.max(0, i - 1)], b = latlngs[Math.min(latlngs.length - 1, i + 1)]
+      const dlng = b.lng - a.lng, dlat = b.lat - a.lat
+      const len = Math.sqrt(dlng * dlng + dlat * dlat) || 1
+      return L.latLng(ll.lat + (dlng / len) * dLat, ll.lng + (-dlat / len) * dLng)
+    })
+  }
+
   function redraw() {
     segLines.forEach(l => rl(l)); segLines = []
     if (st.waypoints.length < 2) return
     const color = routeColor()
-    let i = 0
+    let i = 0, runIdx = 0
     while (i < st.waypoints.length - 1) {
       const type = st.wpTypes[i] || 'drawn'
       let j = i + 1
       while (j < st.waypoints.length && (st.wpTypes[j] || 'drawn') === type) j++
-      const pts = st.waypoints.slice(i, j < st.waypoints.length ? j + 1 : j)
+      const pts = applyOffset(st.waypoints.slice(i, j < st.waypoints.length ? j + 1 : j), runIdx)
       if (pts.length > 1) segLines.push(L.polyline(pts, { color, weight: 4, opacity: 0.9, lineJoin: 'round', lineCap: 'round', dashArray: type === 'routed' ? null : '10,6' }).addTo(map))
-      i = j
+      i = j; runIdx++
     }
     scheduleEle()
   }
@@ -94,6 +123,16 @@
   function addPt(ll, type) { saveRouteState(); st.waypoints = [...st.waypoints, ll]; st.wpTypes = [...st.wpTypes, type]; redraw() }
 
   function undoLast() {
+    if (st.activeDrawMode === 'routing') {
+      if (!routeClickPts.length) { showToast('Ei kumottavaa'); return }
+      routeClickPts.pop()
+      const m = routeMarkers.pop(); if (m) rl(m)
+      const n = routeClickPts.length
+      if (n === 0) { routeIndText = '🧭 Napauta lähtöpiste kartalle'; showUseLoc = true; showLoopConf = false }
+      else if (n === 1) { routeIndText = '🧭 Napauta seuraava piste tai määränpää'; showLoopConf = false }
+      else routeIndText = `🧭 ${n} pistettä — Valmis tai Ympyrä`
+      showToast('↩️ Kumottu'); return
+    }
     if (!st.history.length) { showToast('Ei kumottavaa'); return }
     const s = st.history.pop(); st.waypoints = s.wp; st.wpTypes = s.wt; redraw(); showToast('↩️ Kumottu')
   }
@@ -132,15 +171,30 @@
   }
   function cleanFH() { freehandLine = rl(freehandLine); freehandPts = []; freehandActive = false; freehandStarted = false }
 
-  function closestIdx(ll) {
-    let best = 0, bestD = Infinity
-    st.waypoints.forEach((p, i) => { const d = haversine(ll, p); if (d < bestD) { bestD = d; best = i } })
-    return best
+  function closestCandidates(ll, n) {
+    return st.waypoints
+      .map((p, i) => ({ i, d: haversine(ll, p) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, n)
+      .map(x => x.i)
   }
   function spliceFH(pts) {
-    if (pts.length < 2) return; saveRouteState()
+    if (pts.length < 2) return
+    saveRouteState()
     if (!st.waypoints.length) { st.waypoints = pts; st.wpTypes = pts.map(() => 'drawn'); redraw(); showToast('✅ Vapaa reitti lisätty'); return }
-    const si = closestIdx(pts[0]), ei = closestIdx(pts[pts.length - 1])
+    const pStart = pts[0], pEnd = pts[pts.length - 1], pMid = pts[Math.floor(pts.length / 2)]
+    const sCands = closestCandidates(pStart, 20), eCands = closestCandidates(pEnd, 20)
+    let si = 0, ei = Math.min(1, st.waypoints.length - 1), bestScore = Infinity
+    for (const a of sCands) {
+      for (const b of eCands) {
+        if (a === b) continue
+        const lo = Math.min(a, b), hi = Math.max(a, b)
+        const score = haversine(pStart, st.waypoints[a])
+                    + haversine(pEnd,   st.waypoints[b])
+                    + haversine(pMid,   st.waypoints[Math.floor((lo + hi) / 2)])
+        if (score < bestScore) { bestScore = score; si = a; ei = b }
+      }
+    }
     const lo = Math.min(si, ei), hi = Math.max(si, ei)
     const ordered = si <= ei ? pts : [...pts].reverse()
     st.waypoints = [...st.waypoints.slice(0, lo + 1), ...ordered, ...st.waypoints.slice(hi)]
@@ -417,17 +471,16 @@
   // ── Lifecycle ────────────────────────────────────────────────────────────────
   onMount(() => {
     LAYERS = {
-      osm:       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
-      taustakartta: L.tileLayer(`${MML_BASE}/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 16 }),
-      mml:       L.tileLayer(`${MML_BASE}/maastokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 18 }),
-      topo:      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc' }),
-      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
-      ortho:     L.tileLayer(`${MML_BASE}/ortokuva/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 19 }),
-      osm:       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
-      hiking:    L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom: 19, opacity: 0.8 })
+      osm:          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 19, subdomains: 'abc' }),
+      taustakartta: L.tileLayer(`${MML_BASE}/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 21, maxNativeZoom: 16 }),
+      mml:          L.tileLayer(`${MML_BASE}/maastokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 21, maxNativeZoom: 18 }),
+      topo:         L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 17, subdomains: 'abc' }),
+      satellite:    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 21, maxNativeZoom: 19 }),
+      ortho:        L.tileLayer(`${MML_BASE}/ortokuva/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 21, maxNativeZoom: 19 }),
+      hiking:       L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 19, opacity: 0.8 })
     }
-    map = L.map(mapEl, { center: [62.5, 25.7], zoom: 6, zoomControl: true, attributionControl: false })
-    LAYERS.taustakartta.addTo(map); map.on('click', onMapClick)
+    map = L.map(mapEl, { center: [62.5, 25.7], zoom: 6, maxZoom: 21, zoomControl: true, attributionControl: false })
+    LAYERS.taustakartta.addTo(map); map.on('click', onMapClick); map.on('zoomend', redraw)
     mapEl.addEventListener('touchstart', onTouchStart, { passive: false })
     mapEl.addEventListener('touchmove',  onTouchMove,  { passive: false })
     mapEl.addEventListener('touchend',   onTouchEnd,   { passive: false })
@@ -551,13 +604,26 @@
 
   <!-- GPS BUTTONS — always visible, separate pills -->
   <div id="stackGps">
-    <button class="gps-pill" class:trk-on={st.tracking} onclick={toggleTracking}>
-      {st.tracking ? '⏹️' : '🛰️'} {st.tracking ? 'Stop' : 'GPS-seuranta'}
-    </button>
-    <button class="gps-pill" onclick={locateOnce}>📍 Sijaintini</button>
-    <button class="gps-pill" onclick={undoLast}>↩️ Kumoa</button>
-    <button class="gps-pill" onclick={clearAll} style="color:var(--red)">🗑️ Tyhjennä</button>
+    <button class="gps-pill" class:trk-on={st.tracking} title="GPS-seuranta"
+      onpointerdown={e => lpStart(e, st.tracking ? 'GPS-seuranta: Stop' : 'GPS-seuranta')}
+      onpointerup={lpEnd} onpointercancel={lpEnd} onclick={toggleTracking}
+    >{st.tracking ? '⏹️' : '🛰️'}</button>
+    <button class="gps-pill" title="Sijaintini"
+      onpointerdown={e => lpStart(e, 'Sijaintini')}
+      onpointerup={lpEnd} onpointercancel={lpEnd} onclick={locateOnce}
+    >📍</button>
+    <button class="gps-pill" title="Kumoa"
+      onpointerdown={e => lpStart(e, 'Kumoa')}
+      onpointerup={lpEnd} onpointercancel={lpEnd} onclick={undoLast}
+    >↩️</button>
+    <button class="gps-pill" title="Tyhjennä" style="color:var(--red)"
+      onpointerdown={e => lpStart(e, 'Tyhjennä')}
+      onpointerup={lpEnd} onpointercancel={lpEnd} onclick={clearAll}
+    >🗑️</button>
   </div>
+  {#if lpVisible}
+    <div class="lp-tooltip" style="left:{lpPos.x}px; top:{lpPos.y}px">{lpLabel}</div>
+  {/if}
 
   <!-- ACTION PILL -->
   <div class="pill" id="stackAction">
