@@ -23,6 +23,12 @@
   let freehandPts = [], freehandActive = false, freehandStarted = false
   let watchId = null, trackTimer = null, wakeLock = null, lastGpsTime = 0, eleTimer = null
 
+  let routeAnchors  = []   // L.latLng[] — user click points, kept after buildRoute
+  let routeSegments = []   // L.latLng[][] — one coord array per anchor-to-anchor leg
+  let arrowMarkers  = []   // L.Marker[] — direction arrows on routed segments
+  let editMarkers   = []   // L.Marker[] — draggable handles in edit mode
+  let segHistory    = []   // [{anchors, segments}] — parallel to st.history
+
   // ── Search state ─────────────────────────────────────────────────────────────
   let searchResults  = $state([])
   let searchRoutePts = $state([])   // [{name, lat, lng}] for address-based routing
@@ -53,7 +59,13 @@
 
   const hasTrack = $derived(st.trackPts.length > 1)
   const hasRoute = $derived(st.waypoints.length > 1)
-  const actionIcon = $derived(st.activeDrawMode === 'freehand' ? '🖊️' : st.activeDrawMode === 'routing' ? '🧭' : '✏️')
+  const hasAnchors = $derived(routeAnchors.length >= 2)
+  const actionIcon = $derived(
+    st.activeDrawMode === 'freehand' ? '🖊️'
+    : st.activeDrawMode === 'routing' ? '🧭'
+    : st.activeDrawMode === 'edit'    ? '✋'
+    : '✏️'
+  )
 
   function rl(l) { if (l) try { map.removeLayer(l) } catch(e){} return null }
 
@@ -85,7 +97,68 @@
   // ── Route state ─────────────────────────────────────────────────────────────
   function saveRouteState() {
     st.history.push({ wp: st.waypoints.map(p => L.latLng(p.lat, p.lng)), wt: [...st.wpTypes] })
+    segHistory.push({ anchors: routeAnchors.map(p => L.latLng(p.lat, p.lng)), segments: routeSegments.map(s => [...s]) })
     if (st.history.length > HISTORY_LIMIT) st.history.shift()
+    if (segHistory.length > HISTORY_LIMIT) segHistory.shift()
+  }
+
+  function splitRouteByAnchors(coords, anchors) {
+    if (anchors.length < 2 || coords.length < 2) return [coords]
+    const segments = []
+    let splitIdx = 0
+    for (let a = 1; a < anchors.length - 1; a++) {
+      const anchor = anchors[a]
+      let bestIdx = splitIdx + 1, bestDist = Infinity
+      for (let i = splitIdx + 1; i < coords.length - 1; i++) {
+        const d = haversine(anchor, coords[i])
+        if (d < bestDist) { bestDist = d; bestIdx = i }
+        else if (d > bestDist + 0.1 && bestDist < 0.05) break
+      }
+      segments.push(coords.slice(splitIdx, bestIdx + 1))
+      splitIdx = bestIdx
+    }
+    segments.push(coords.slice(splitIdx))
+    return segments
+  }
+
+  function detectSegmentOverlap(seg1, seg2) {
+    if (!seg1.length || !seg2.length) return false
+    const mid1 = seg1[Math.floor(seg1.length / 2)]
+    const mid2 = seg2[Math.floor(seg2.length / 2)]
+    return haversine(mid1, mid2) < 0.03
+  }
+
+  function addArrowsToSegment(latlngs, color) {
+    if (latlngs.length < 2) return
+    const PX_INTERVAL = 100, MAX_ARROWS = 30
+    const screenPts = latlngs.map(ll => map.latLngToContainerPoint(ll))
+    const cumDist = [0]
+    for (let i = 1; i < screenPts.length; i++) {
+      const dx = screenPts[i].x - screenPts[i-1].x, dy = screenPts[i].y - screenPts[i-1].y
+      cumDist.push(cumDist[i-1] + Math.sqrt(dx*dx + dy*dy))
+    }
+    const totalPx = cumDist[cumDist.length - 1]
+    if (totalPx < PX_INTERVAL) return
+    const count = Math.min(Math.floor(totalPx / PX_INTERVAL), MAX_ARROWS)
+    for (let k = 1; k <= count; k++) {
+      const targetDist = (k / (count + 1)) * totalPx
+      let lo = 0, hi = cumDist.length - 2
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (cumDist[mid+1] < targetDist) lo = mid+1; else hi = mid }
+      const t = (targetDist - cumDist[lo]) / (cumDist[lo+1] - cumDist[lo] || 1)
+      const px = screenPts[lo].x + t * (screenPts[lo+1].x - screenPts[lo].x)
+      const py = screenPts[lo].y + t * (screenPts[lo+1].y - screenPts[lo].y)
+      const dx = screenPts[lo+1].x - screenPts[lo].x, dy = screenPts[lo+1].y - screenPts[lo].y
+      const angleDeg = Math.atan2(dx, -dy) * 180 / Math.PI
+      const ll = map.containerPointToLatLng([px, py])
+      arrowMarkers.push(L.marker(ll, {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="route-arrow" style="color:${color};transform:rotate(${angleDeg.toFixed(1)}deg)">▲</div>`,
+          iconSize: [16, 16], iconAnchor: [8, 8]
+        }),
+        interactive: false, keyboard: false, zIndexOffset: -100
+      }).addTo(map))
+    }
   }
 
   function applyOffset(latlngs, runIdx) {
@@ -106,16 +179,32 @@
 
   function redraw() {
     segLines.forEach(l => rl(l)); segLines = []
+    arrowMarkers.forEach(m => rl(m)); arrowMarkers = []
     if (st.waypoints.length < 2) return
     const color = routeColor()
-    let i = 0, runIdx = 0
-    while (i < st.waypoints.length - 1) {
-      const type = st.wpTypes[i] || 'drawn'
-      let j = i + 1
-      while (j < st.waypoints.length && (st.wpTypes[j] || 'drawn') === type) j++
-      const pts = applyOffset(st.waypoints.slice(i, j < st.waypoints.length ? j + 1 : j), runIdx)
-      if (pts.length > 1) segLines.push(L.polyline(pts, { color, weight: 4, opacity: 0.9, lineJoin: 'round', lineCap: 'round', dashArray: type === 'routed' ? null : '10,6' }).addTo(map))
-      i = j; runIdx++
+
+    if (routeSegments.length > 0) {
+      for (let i = 0; i < routeSegments.length; i++) {
+        const raw = routeSegments[i]
+        if (raw.length < 2) continue
+        const overlaps = i > 0 && detectSegmentOverlap(routeSegments[i-1], raw)
+        const pts = applyOffset(raw, overlaps ? 1 : 0)
+        segLines.push(L.polyline(pts, { color, weight: 4, opacity: 0.9, lineJoin: 'round', lineCap: 'round' }).addTo(map))
+        addArrowsToSegment(pts, color)
+      }
+    } else {
+      let i = 0, runIdx = 0
+      while (i < st.waypoints.length - 1) {
+        const type = st.wpTypes[i] || 'drawn'
+        let j = i + 1
+        while (j < st.waypoints.length && (st.wpTypes[j] || 'drawn') === type) j++
+        const pts = applyOffset(st.waypoints.slice(i, j < st.waypoints.length ? j + 1 : j), runIdx)
+        if (pts.length > 1) {
+          segLines.push(L.polyline(pts, { color, weight: 4, opacity: 0.9, lineJoin: 'round', lineCap: 'round', dashArray: type === 'routed' ? null : '10,6' }).addTo(map))
+          if (type === 'routed') addArrowsToSegment(pts, color)
+        }
+        i = j; runIdx++
+      }
     }
     scheduleEle()
   }
@@ -134,15 +223,22 @@
       showToast('↩️ Kumottu'); return
     }
     if (!st.history.length) { showToast('Ei kumottavaa'); return }
-    const s = st.history.pop(); st.waypoints = s.wp; st.wpTypes = s.wt; redraw(); showToast('↩️ Kumottu')
+    const s = st.history.pop(), ss = segHistory.pop() ?? { anchors: [], segments: [] }
+    st.waypoints = s.wp; st.wpTypes = s.wt
+    routeAnchors = ss.anchors; routeSegments = ss.segments
+    redraw()
+    if (st.activeDrawMode === 'edit') buildEditMarkers()
+    showToast('↩️ Kumottu')
   }
 
   function clearAll() {
-    stopDraw(); stopFreehand(); cancelRouting()
+    stopDraw(); stopFreehand(); cancelRouting(); stopEdit()
     segLines.forEach(l => rl(l)); segLines = []
+    arrowMarkers.forEach(m => rl(m)); arrowMarkers = []
     gpsMarker = rl(gpsMarker); gpsCircle = rl(gpsCircle); trackLine = rl(trackLine); freehandLine = rl(freehandLine)
     st.waypoints = []; st.wpTypes = []; st.history = []; st.routeElevations = []; st.trackPts = []
-    freehandPts = []; clearTrackStorage(); st.currentEle = '– m'; showToast('Kartta tyhjennetty')
+    freehandPts = []; routeAnchors = []; routeSegments = []; segHistory = []
+    clearTrackStorage(); st.currentEle = '– m'; showToast('Kartta tyhjennetty')
   }
 
   // ── Draw ────────────────────────────────────────────────────────────────────
@@ -238,8 +334,56 @@
   function cancelRouting() {
     if (st.activeDrawMode === 'routing') st.activeDrawMode = null
     routeClickPts = []; routeMarkers.forEach(m => rl(m)); routeMarkers = []
-    showUseLoc = false; showLoopConf = false; map.getContainer().style.cursor = ''
+    showUseLoc = false; showLoopConf = false
+    map.getContainer().style.cursor = ''
+    // routeAnchors/routeSegments intentionally kept for edit mode
   }
+  // ── Edit mode ────────────────────────────────────────────────────────────────
+  function toggleEdit() { st.activeDrawMode === 'edit' ? stopEdit() : startEdit() }
+  function startEdit() {
+    if (!hasAnchors) { showToast('⚠️ Ei reititystä muokattavaksi'); return }
+    stopDraw(); stopFreehand(); cancelRouting()
+    st.activeDrawMode = 'edit'; st.openMenu = null
+    map.getContainer().style.cursor = 'grab'
+    showToast('✋ Vedä ankkuripisteitä reitin muuttamiseksi')
+    buildEditMarkers()
+  }
+  function stopEdit() {
+    if (st.activeDrawMode === 'edit') st.activeDrawMode = null
+    editMarkers.forEach(m => rl(m)); editMarkers = []
+    map.getContainer().style.cursor = ''
+  }
+  function buildEditMarkers() {
+    editMarkers.forEach(m => rl(m)); editMarkers = []
+    routeAnchors.forEach((anchor, i) => {
+      const isStart = i === 0, isEnd = i === routeAnchors.length - 1
+      const cls  = isStart ? 'edit-anchor edit-anchor-start' : isEnd ? 'edit-anchor edit-anchor-end' : 'edit-anchor'
+      const size = (isStart || isEnd) ? 20 : 16
+      const marker = L.marker(anchor, {
+        icon: L.divIcon({ className: '', html: `<div class="${cls}"></div>`, iconSize: [size, size], iconAnchor: [size/2, size/2] }),
+        draggable: true, autoPan: true, keyboard: false, zIndexOffset: 500
+      }).addTo(map)
+      marker.on('dragstart', () => { map.getContainer().style.cursor = 'grabbing' })
+      marker.on('dragend', async () => {
+        map.getContainer().style.cursor = 'grab'
+        saveRouteState()
+        routeAnchors[i] = marker.getLatLng()
+        spinning = true
+        try {
+          const path = await fetchRoute([...routeAnchors])
+          const routed = path.points.coordinates.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll })
+          st.waypoints = routed; st.wpTypes = routed.map(() => 'routed'); st.routeElevations = []
+          routeSegments = splitRouteByAnchors(routed, routeAnchors)
+          redraw(); showToast(`🧭 ${(path.distance / 1000).toFixed(2)} km`)
+        } catch(e) {
+          routeAnchors[i] = anchor; marker.setLatLng(anchor)
+          showToast('⚠️ Reititys epäonnistui')
+        } finally { spinning = false; buildEditMarkers() }
+      })
+      editMarkers.push(marker)
+    })
+  }
+
   function addRoutePoint(ll) {
     routeClickPts.push(ll)
     const n = routeClickPts.length, isFirst = n === 1
@@ -260,7 +404,10 @@
     try {
       const path = await fetchRoute(pts)
       const routed = path.points.coordinates.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll })
-      saveRouteState(); st.waypoints = routed; st.wpTypes = routed.map(() => 'routed'); st.routeElevations = []
+      saveRouteState()
+      st.waypoints = routed; st.wpTypes = routed.map(() => 'routed'); st.routeElevations = []
+      routeAnchors  = pts.map(p => L.latLng(p.lat, p.lng))
+      routeSegments = splitRouteByAnchors(routed, routeAnchors)
       redraw()
       if (segLines.length) map.fitBounds(segLines[0].getBounds(), { padding: [30, 30] })
       showToast(`🧭 ${(path.distance / 1000).toFixed(2)} km löydetty`)
@@ -442,17 +589,7 @@
     searchRoutePts = []
     st.searchOpen = false
     if (searchMarker) { try { map.removeLayer(searchMarker) } catch(e) {} searchMarker = null }
-    // Reuse the existing buildRoute logic via routing mode
-    spinning = true
-    try {
-      const path = await fetchRoute(pts)
-      const routed = path.points.coordinates.map(c => { const ll = L.latLng(c[1], c[0]); ll.ele = c[2] ?? null; return ll })
-      saveRouteState(); st.waypoints = routed; st.wpTypes = routed.map(() => 'routed'); st.routeElevations = []
-      redraw()
-      if (segLines.length) map.fitBounds(segLines[0].getBounds(), { padding: [30, 30] })
-      showToast(`🧭 ${(path.distance / 1000).toFixed(2)} km löydetty`)
-    } catch(e) { showToast('⚠️ ' + e.message.slice(0, 100)) }
-    finally { spinning = false }
+    await buildRoute(pts)
   }
 
   // ── Map events ───────────────────────────────────────────────────────────────
@@ -636,6 +773,10 @@
         <button class="abtn" onclick={closeLoop}><span class="ai">🔄</span>Sulje ympyrä</button>
         <button class="abtn" onclick={confirmRoute}><span class="ai">✅</span>Valmis</button>
       {/if}
+      <button class="abtn" class:a-edit={st.activeDrawMode === 'edit'}
+        onclick={toggleEdit}
+        style={!hasAnchors ? 'opacity:.4;cursor:not-allowed' : ''}
+      ><span class="ai">✋</span>Muokkaa reittiä</button>
       <button class="abtn" onclick={() => fileInput.click()}><span class="ai">📂</span>Avaa GPX</button>
       {#if hasTrack}
         <button class="abtn" onclick={() => doExportGPX('track')}><span class="ai">⬇️</span>Vie tallenne</button>
@@ -651,6 +792,7 @@
   <!-- Indicators -->
   <div id="drawInd"  class="indicator" class:vis={st.activeDrawMode === 'draw'}>✏️ Napauta karttaan lisätäksesi pisteitä</div>
   <div id="freeInd"  class="indicator" class:vis={st.activeDrawMode === 'freehand'}>🖊️ Piirrä sormella — vapauta lopettaaksesi</div>
+  <div id="editInd"  class="indicator" class:vis={st.activeDrawMode === 'edit'}>✋ Vedä ankkuripisteitä — reitin muokkaus</div>
   <div id="routeInd" class="indicator route-ind-wrap" class:vis={st.activeDrawMode === 'routing'}>
     <span>{routeIndText}</span>
     {#if showUseLoc}<button id="btnUseLocation" onclick={useLocationAsStart}>📍 Sijaintini</button>{/if}
