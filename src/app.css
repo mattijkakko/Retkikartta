@@ -165,3 +165,14 @@ header { background:var(--surface); padding:10px 16px; display:flex; align-items
 
 /* ── LONG-PRESS TOOLTIP ── */
 .lp-tooltip { position:fixed; background:rgba(0,0,0,.76); color:#fff; font-size:.75rem; font-weight:500; padding:5px 10px; border-radius:8px; pointer-events:none; z-index:9000; white-space:nowrap; transform:translate(-50%,-100%); margin-top:-6px; }
+
+/* ── ROUTE DIRECTION ARROWS ── */
+.route-arrow { width:16px; height:16px; display:flex; align-items:center; justify-content:center; font-size:11px; line-height:1; pointer-events:none; user-select:none; opacity:0.75; }
+
+/* ── EDIT MODE ANCHOR HANDLES ── */
+.edit-anchor { width:16px; height:16px; background:#fff; border:2.5px solid var(--gold); border-radius:3px; box-shadow:0 1px 6px rgba(0,0,0,.35); cursor:grab; touch-action:none; }
+.edit-anchor:active { cursor:grabbing; }
+.edit-anchor-start { width:20px; height:20px; border-color:var(--green); border-radius:4px; }
+.edit-anchor-end   { width:20px; height:20px; border-color:var(--red);   border-radius:4px; }
+#editInd { background:rgba(255,248,230,.97); border-color:var(--gold); color:#7a5c1e; }
+.abtn.a-edit { background:rgba(200,168,75,.15) !important; color:#7a5c1e !important; font-weight:600; }
