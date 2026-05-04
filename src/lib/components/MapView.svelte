@@ -33,6 +33,19 @@
   let routeIndText  = $state('🧭 Napauta lähtöpiste kartalle')
   let showUseLoc    = $state(false)
   let showLoopConf  = $state(false)
+  let lpLabel   = $state('')
+  let lpPos     = $state({ x: 0, y: 0 })
+  let lpVisible = $state(false)
+  let lpTimer   = null
+
+  function lpStart(e, label) {
+    lpTimer = setTimeout(() => { lpLabel = label; lpPos = { x: e.clientX, y: e.clientY }; lpVisible = true }, 500)
+  }
+  function lpEnd() {
+    clearTimeout(lpTimer); lpTimer = null
+    if (lpVisible) setTimeout(() => { lpVisible = false }, 1200)
+  }
+
   let spinning      = $state(false)
   let trkSpeedVal   = $state('0.0 km/h')
   let trkAccVal     = $state('–')
@@ -75,18 +88,34 @@
     if (st.history.length > HISTORY_LIMIT) st.history.shift()
   }
 
+  function applyOffset(latlngs, runIdx) {
+    if (runIdx % 2 === 0 || latlngs.length < 2) return latlngs
+    const zoom = map.getZoom()
+    const midLat = latlngs[Math.floor(latlngs.length / 2)].lat * Math.PI / 180
+    const mPerPx = 156543.03392 * Math.cos(midLat) / Math.pow(2, zoom)
+    const offsetM = 5 * mPerPx
+    const dLat = offsetM / 111320
+    const dLng = offsetM / (111320 * Math.cos(midLat))
+    return latlngs.map((ll, i) => {
+      const a = latlngs[Math.max(0, i - 1)], b = latlngs[Math.min(latlngs.length - 1, i + 1)]
+      const dlng = b.lng - a.lng, dlat = b.lat - a.lat
+      const len = Math.sqrt(dlng * dlng + dlat * dlat) || 1
+      return L.latLng(ll.lat + (dlng / len) * dLat, ll.lng + (-dlat / len) * dLng)
+    })
+  }
+
   function redraw() {
     segLines.forEach(l => rl(l)); segLines = []
     if (st.waypoints.length < 2) return
     const color = routeColor()
-    let i = 0
+    let i = 0, runIdx = 0
     while (i < st.waypoints.length - 1) {
       const type = st.wpTypes[i] || 'drawn'
       let j = i + 1
       while (j < st.waypoints.length && (st.wpTypes[j] || 'drawn') === type) j++
-      const pts = st.waypoints.slice(i, j < st.waypoints.length ? j + 1 : j)
+      const pts = applyOffset(st.waypoints.slice(i, j < st.waypoints.length ? j + 1 : j), runIdx)
       if (pts.length > 1) segLines.push(L.polyline(pts, { color, weight: 4, opacity: 0.9, lineJoin: 'round', lineCap: 'round', dashArray: type === 'routed' ? null : '10,6' }).addTo(map))
-      i = j
+      i = j; runIdx++
     }
     scheduleEle()
   }
@@ -442,17 +471,16 @@
   // ── Lifecycle ────────────────────────────────────────────────────────────────
   onMount(() => {
     LAYERS = {
-      osm:       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
-      taustakartta: L.tileLayer(`${MML_BASE}/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 16 }),
-      mml:       L.tileLayer(`${MML_BASE}/maastokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 18 }),
-      topo:      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc' }),
-      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
-      ortho:     L.tileLayer(`${MML_BASE}/ortokuva/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 19 }),
-      osm:       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
-      hiking:    L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom: 19, opacity: 0.8 })
+      osm:          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 19, subdomains: 'abc' }),
+      taustakartta: L.tileLayer(`${MML_BASE}/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 21, maxNativeZoom: 16 }),
+      mml:          L.tileLayer(`${MML_BASE}/maastokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 21, maxNativeZoom: 18 }),
+      topo:         L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 17, subdomains: 'abc' }),
+      satellite:    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 21, maxNativeZoom: 19 }),
+      ortho:        L.tileLayer(`${MML_BASE}/ortokuva/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, { maxZoom: 21, maxNativeZoom: 19 }),
+      hiking:       L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 19, opacity: 0.8 })
     }
-    map = L.map(mapEl, { center: [62.5, 25.7], zoom: 6, zoomControl: true, attributionControl: false })
-    LAYERS.taustakartta.addTo(map); map.on('click', onMapClick)
+    map = L.map(mapEl, { center: [62.5, 25.7], zoom: 6, maxZoom: 21, zoomControl: true, attributionControl: false })
+    LAYERS.taustakartta.addTo(map); map.on('click', onMapClick); map.on('zoomend', redraw)
     mapEl.addEventListener('touchstart', onTouchStart, { passive: false })
     mapEl.addEventListener('touchmove',  onTouchMove,  { passive: false })
     mapEl.addEventListener('touchend',   onTouchEnd,   { passive: false })
@@ -576,13 +604,26 @@
 
   <!-- GPS BUTTONS — always visible, separate pills -->
   <div id="stackGps">
-    <button class="gps-pill" class:trk-on={st.tracking} onclick={toggleTracking}>
-      {st.tracking ? '⏹️' : '🛰️'} {st.tracking ? 'Stop' : 'GPS-seuranta'}
-    </button>
-    <button class="gps-pill" onclick={locateOnce}>📍 Sijaintini</button>
-    <button class="gps-pill" onclick={undoLast}>↩️ Kumoa</button>
-    <button class="gps-pill" onclick={clearAll} style="color:var(--red)">🗑️ Tyhjennä</button>
+    <button class="gps-pill" class:trk-on={st.tracking} title="GPS-seuranta"
+      onpointerdown={e => lpStart(e, st.tracking ? 'GPS-seuranta: Stop' : 'GPS-seuranta')}
+      onpointerup={lpEnd} onpointercancel={lpEnd} onclick={toggleTracking}
+    >{st.tracking ? '⏹️' : '🛰️'}</button>
+    <button class="gps-pill" title="Sijaintini"
+      onpointerdown={e => lpStart(e, 'Sijaintini')}
+      onpointerup={lpEnd} onpointercancel={lpEnd} onclick={locateOnce}
+    >📍</button>
+    <button class="gps-pill" title="Kumoa"
+      onpointerdown={e => lpStart(e, 'Kumoa')}
+      onpointerup={lpEnd} onpointercancel={lpEnd} onclick={undoLast}
+    >↩️</button>
+    <button class="gps-pill" title="Tyhjennä" style="color:var(--red)"
+      onpointerdown={e => lpStart(e, 'Tyhjennä')}
+      onpointerup={lpEnd} onpointercancel={lpEnd} onclick={clearAll}
+    >🗑️</button>
   </div>
+  {#if lpVisible}
+    <div class="lp-tooltip" style="left:{lpPos.x}px; top:{lpPos.y}px">{lpLabel}</div>
+  {/if}
 
   <!-- ACTION PILL -->
   <div class="pill" id="stackAction">

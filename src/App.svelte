@@ -9,6 +9,7 @@
   <button class="search-btn" onclick={() => st.searchOpen = !st.searchOpen} title="Hae osoite">🔍</button>
 </header>
 
-<MapView />
-
-<StatsPanel />
+<div class="content">
+  <MapView />
+  <StatsPanel />
+</div>

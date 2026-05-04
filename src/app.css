@@ -10,6 +10,7 @@
 * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); }
 #app { height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+.content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 
 /* ── HEADER ── */
 header { background:var(--surface); padding:10px 16px; display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0; z-index:1000; }
@@ -153,3 +154,14 @@ header { background:var(--surface); padding:10px 16px; display:flex; align-items
 .stat-card  { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:7px 6px; text-align:center; }
 .sv { font-size:1.05rem; font-weight:600; color:var(--gold); line-height:1; margin-bottom:2px; }
 .sl { font-size:.58rem; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; }
+
+/* ── LANDSCAPE ── */
+@media (orientation:landscape) {
+  .content { flex-direction:row; }
+  .stats-panel { width:160px; flex-shrink:0; border-top:none; border-left:1px solid var(--border); padding:10px 8px; overflow-y:auto; }
+  .stats-row  { grid-template-columns:1fr; gap:4px; margin-bottom:4px; }
+  .stats-row2 { grid-template-columns:1fr; gap:4px; }
+}
+
+/* ── LONG-PRESS TOOLTIP ── */
+.lp-tooltip { position:fixed; background:rgba(0,0,0,.76); color:#fff; font-size:.75rem; font-weight:500; padding:5px 10px; border-radius:8px; pointer-events:none; z-index:9000; white-space:nowrap; transform:translate(-50%,-100%); margin-top:-6px; }
