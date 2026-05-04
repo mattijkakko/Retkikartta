@@ -1,4 +1,5 @@
-const GH_KEY = 'e379a544-f2a3-4ad2-93c0-a2b43ce9047a'
+const GH_KEY  = 'e379a544-f2a3-4ad2-93c0-a2b43ce9047a'
+const ORS_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImI0N2E1ZDUzZjc4NjQ0MDlhM2FhYjNjMDBlZWU4MTBjIiwiaCI6Im11cm11cjY0In0='
 
 export async function geocode(query) {
   const r = await fetch(
@@ -22,21 +23,80 @@ export async function geocode(query) {
   })
 }
 
-export async function fetchRoute(pts) {
-  const r = await fetch(`https://graphhopper.com/api/1/route?key=${GH_KEY}`, {
+function chunkRoute(pts, size = 5) {
+  if (pts.length <= size) return [pts]
+  const chunks = []
+  for (let i = 0; i < pts.length - 1; i += size - 1) {
+    chunks.push(pts.slice(i, i + size))
+  }
+  return chunks
+}
+
+function mergePaths(paths) {
+  if (paths.length === 1) return paths[0]
+  const coords = paths[0].points.coordinates.slice()
+  let distance = paths[0].distance
+  let ascend  = paths[0].ascend  ?? 0
+  let descend = paths[0].descend ?? 0
+  for (let i = 1; i < paths.length; i++) {
+    coords.push(...paths[i].points.coordinates.slice(1))
+    distance += paths[i].distance
+    ascend   += paths[i].ascend  ?? 0
+    descend  += paths[i].descend ?? 0
+  }
+  return { points: { coordinates: coords }, distance, ascend, descend }
+}
+
+async function fetchRouteORS(pts) {
+  const r = await fetch('https://api.openrouteservice.org/v2/directions/foot-hiking/geojson', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': ORS_KEY },
     body: JSON.stringify({
-      profile: 'foot',
-      points: pts.map(p => [+p.lng.toFixed(6), +p.lat.toFixed(6)]),
-      points_encoded: false
+      coordinates: pts.map(p => [+p.lng.toFixed(6), +p.lat.toFixed(6)])
     }),
     signal: AbortSignal.timeout(12000)
   })
   const j = await r.json()
-  if (!r.ok) throw new Error(j?.message || 'HTTP ' + r.status)
-  if (!j.paths?.length) throw new Error('Ei reittivaihtoehtoja')
-  return j.paths[0]
+  if (!r.ok) throw new Error(j?.error?.message || 'ORS HTTP ' + r.status)
+  const feat = j.features?.[0]
+  if (!feat) throw new Error('ORS: ei reittivaihtoehtoja')
+  const props = feat.properties
+  return {
+    points: { coordinates: feat.geometry.coordinates },
+    distance: props.summary.distance,
+    ascend:   props.ascent  ?? 0,
+    descend:  props.descent ?? 0
+  }
+}
+
+async function fetchRouteGH(pts) {
+  const chunks = chunkRoute(pts)
+  const paths = []
+  for (const chunk of chunks) {
+    const r = await fetch(`https://graphhopper.com/api/1/route?key=${GH_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile: 'foot',
+        points: chunk.map(p => [+p.lng.toFixed(6), +p.lat.toFixed(6)]),
+        points_encoded: false
+      }),
+      signal: AbortSignal.timeout(12000)
+    })
+    const j = await r.json()
+    if (!r.ok) throw new Error(j?.message || 'HTTP ' + r.status)
+    if (!j.paths?.length) throw new Error('Ei reittivaihtoehtoja')
+    paths.push(j.paths[0])
+  }
+  return mergePaths(paths)
+}
+
+export async function fetchRoute(pts) {
+  try {
+    return await fetchRouteORS(pts)
+  } catch {
+    return await fetchRouteGH(pts)
+  }
 }
 
 export async function fetchElevation(waypoints, max = 100) {
