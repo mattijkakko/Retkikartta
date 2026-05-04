@@ -1,5 +1,5 @@
-const GH_KEY  = 'e379a544-f2a3-4ad2-93c0-a2b43ce9047a'
-const ORS_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImI0N2E1ZDUzZjc4NjQ0MDlhM2FhYjNjMDBlZWU4MTBjIiwiaCI6Im11cm11cjY0In0='
+const GH_KEY  = import.meta.env.VITE_GH_KEY  ?? ''
+const ORS_KEY = import.meta.env.VITE_ORS_KEY ?? ''
 
 export async function geocode(query) {
   const r = await fetch(
