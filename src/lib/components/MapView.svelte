@@ -8,7 +8,7 @@
   import { saveTrack, clearTrackStorage, loadTrack } from '../storage.js'
   import SearchPanel from './SearchPanel.svelte'
 
-  const MML_KEY  = '113f9471-0872-42fa-9fe7-cbedae6572b8'
+  const MML_KEY  = import.meta.env.VITE_MML_KEY ?? ''
   const MML_BASE = 'https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0'
   const VAR_BLUE = '#3478f6'
   const LAYER_TOASTS = { osm:'🗺️ OpenStreetMap', mml:'🇫🇮 MML Maastokartta', taustakartta:'🗺️ MML Taustakartta', topo:'🏔️ Topokartta', satellite:'🛸 Satelliitti', ortho:'📷 MML Ortoilmakuva' }
